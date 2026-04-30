@@ -61,7 +61,7 @@ def on_sensor_register(data):
     name      = data.get("name", "Handy")
     room      = data.get("room", "Unbekannt")
     threshold = float(data.get("threshold", config.DOG_THRESHOLD_DB))
-    sensors.register(sid, name, room, threshold)
+    sensors.register(sid, name, room, threshold, data)
     emit("registered", {"ok": True, "sid": sid})
     socketio.emit("sensors_update", sensors.get_all())
 

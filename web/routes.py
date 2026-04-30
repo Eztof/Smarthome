@@ -19,6 +19,43 @@ bp = Blueprint("main", __name__)
 TZ = pytz.timezone(config.TIMEZONE)
 
 
+def send_file_range(path, mimetype):
+    """Sendet Datei mit HTTP Range-Support (nötig für Audio/Video-Player im Browser)."""
+    import re
+    file_size = os.path.getsize(path)
+    range_header = request.headers.get("Range", None)
+
+    if range_header:
+        m = re.search(r"bytes=(\d+)-(\d*)", range_header)
+        if m:
+            byte_start = int(m.group(1))
+            byte_end   = int(m.group(2)) if m.group(2) else file_size - 1
+            byte_end   = min(byte_end, file_size - 1)
+            length     = byte_end - byte_start + 1
+
+            with open(path, "rb") as f:
+                f.seek(byte_start)
+                data = f.read(length)
+
+            resp = Response(
+                data,
+                status=206,
+                mimetype=mimetype,
+                direct_passthrough=True,
+            )
+            resp.headers["Content-Range"]  = f"bytes {byte_start}-{byte_end}/{file_size}"
+            resp.headers["Accept-Ranges"]  = "bytes"
+            resp.headers["Content-Length"] = str(length)
+            return resp
+
+    with open(path, "rb") as f:
+        data = f.read()
+    resp = Response(data, status=200, mimetype=mimetype)
+    resp.headers["Accept-Ranges"]  = "bytes"
+    resp.headers["Content-Length"] = str(file_size)
+    return resp
+
+
 # ── Hilfsfunktionen ──────────────────────────────────────
 
 def now_local():
@@ -259,11 +296,10 @@ def api_hunde_recording_delete():
 
 @bp.route("/api/hunde/recordings/play/<filename>")
 def api_hunde_recording_play(filename):
-    import os
     from modules.hunde.monitor import RECORDINGS_DIR
     path = os.path.join(RECORDINGS_DIR, os.path.basename(filename))
     if os.path.exists(path):
-        return send_file(path, mimetype="audio/wav")
+        return send_file_range(path, "audio/wav")
     return jsonify({"error": "Datei nicht gefunden"}), 404
 
 @bp.route("/hunde/aufnahmen")
@@ -301,9 +337,16 @@ def api_sensors_recording_delete():
 def api_sensors_recording_play(filename):
     from modules.sensors.manager import RECORDINGS_DIR
     path = os.path.join(RECORDINGS_DIR, os.path.basename(filename))
-    if os.path.exists(path):
-        return send_file(path, mimetype="audio/wav")
-    return jsonify({"error": "Datei nicht gefunden"}), 404
+    if not os.path.exists(path):
+        return jsonify({"error": "Datei nicht gefunden"}), 404
+    fn = os.path.basename(filename).lower()
+    if fn.endswith(".webm"):
+        mime = "video/webm"
+    elif fn.endswith(".mp4"):
+        mime = "video/mp4"
+    else:
+        mime = "audio/wav"
+    return send_file_range(path, mime)
 
 
 # ════════════════════════════════════════════════════════════
@@ -378,3 +421,33 @@ def cert_download():
             download_name="pihome.crt",
         )
     return "Kein Zertifikat gefunden.", 404
+
+
+@bp.route("/api/sensors/upload_video", methods=["POST"])
+def api_sensors_upload_video():
+    from modules.sensors.manager import RECORDINGS_DIR
+    from datetime import datetime
+
+    video_file = request.files.get("video")
+    room       = request.form.get("room", "Unbekannt").replace(" ", "_")
+    name       = request.form.get("name", "Handy")
+
+    if not video_file:
+        return jsonify({"error": "Keine Videodatei"}), 400
+
+    # Dateiendung aus MIME-Type oder Dateiname ermitteln
+    mime = video_file.content_type or video_file.filename or ""
+    if "mp4" in mime:
+        ext = "mp4"
+    else:
+        ext = "webm"
+
+    ts       = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    filename = f"{ts}_video_{room}.{ext}"
+    path     = os.path.join(RECORDINGS_DIR, filename)
+
+    video_file.save(path)
+    size_kb = round(os.path.getsize(path) / 1024, 1)
+    print(f"[Video] Gespeichert: {filename} ({size_kb} KB) von {name}")
+
+    return jsonify({"ok": True, "filename": filename, "size_kb": size_kb})

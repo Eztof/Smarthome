@@ -33,7 +33,9 @@ _sensors = {}
 
 # ── Öffentliche API ───────────────────────────────────────
 
-def register(sid: str, name: str, room: str, threshold: float):
+def register(sid: str, name: str, room: str, threshold: float, data: dict = None):
+    camera = data.get("camera", False) if isinstance(data, dict) else False
+
     with _lock:
         _sensors[sid] = {
             "sid":          sid,
@@ -44,6 +46,7 @@ def register(sid: str, name: str, room: str, threshold: float):
             "threshold":    threshold,
             "connected_at": datetime.now().strftime("%H:%M:%S"),
             "recording":    False,
+            "camera":       camera,
             "error":        None,
             # Ringpuffer (float32-chunks)
             "_ring":        deque(maxlen=_pre_chunks()),
@@ -77,6 +80,7 @@ def get_all():
                 "threshold":    s["threshold"],
                 "connected_at": s["connected_at"],
                 "recording":    s["recording"],
+                "camera":       s.get("camera", False),
             }
             for s in _sensors.values()
         ]
