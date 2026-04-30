@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+{% block title %}Dashboard – PI·HOME{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+{% block head %}
+<style>
+.hero{background:linear-gradient(135deg,#111e35,#0d1825);border:1px solid var(--glow);border-radius:var(--r);padding:var(--cp) calc(var(--cp)+8px);display:flex;align-items:center;justify-content:space-between;gap:20px;position:relative;overflow:hidden;margin-bottom:14px;}
+.hero::before{content:'';position:absolute;top:-50px;right:-50px;width:200px;height:200px;background:radial-gradient(circle,rgba(79,195,247,.07),transparent 70%);}
+.h-loc{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--accent);margin-bottom:8px;}
+.h-temp{font-family:var(--mono);font-size:clamp(40px,8vw,68px);font-weight:300;line-height:1;margin-bottom:4px;}
+.h-temp .u{font-size:.44em;color:var(--muted);}
+.h-desc{font-size:clamp(13px,2vw,15px);color:var(--muted);}
+.h-feels{font-size:12px;color:var(--dim);font-family:var(--mono);margin-top:3px;}
+.h-emoji{font-size:clamp(44px,8vw,72px);line-height:1;flex-shrink:0;}
+.h-stats{display:flex;gap:20px;margin-top:14px;padding-top:14px;border-top:1px solid var(--border);flex-wrap:wrap;}
+.h-stat .ws-l{font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);}
+.h-stat .ws-v{font-family:var(--mono);font-size:clamp(14px,2vw,17px);font-weight:500;}
+body.lm-mobile .hero{flex-direction:column;align-items:flex-start;padding:18px;}
+body.lm-mobile .h-emoji{position:absolute;top:18px;right:18px;font-size:52px;}
+
+.fc{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--r);padding:var(--cp);text-align:center;transition:border-color .2s,transform .2s;}
+.fc:hover{border-color:var(--glow);transform:translateY(-2px);}
+.fc-day{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:3px;}
+.fc-dt{font-family:var(--mono);font-size:11px;color:var(--dim);margin-bottom:10px;}
+.fc-em{font-size:clamp(26px,4vw,32px);margin-bottom:8px;}
+.fc-ds{font-size:11px;color:var(--muted);margin-bottom:8px;min-height:26px;}
+.fc-t{font-family:var(--mono);font-size:13px;display:flex;justify-content:center;gap:8px;}
+.fc-mx{color:var(--warm);font-weight:500;}
+.fc-mn{color:var(--dim);}
+.fc-r{margin-top:6px;font-family:var(--mono);font-size:11px;color:var(--accent);}
+body.lm-mobile .fc-wrap{display:flex;gap:10px;overflow-x:auto;padding-bottom:6px;}
+body.lm-mobile .fc-wrap .fc{flex-shrink:0;min-width:120px;}
+
+.mc{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--r);padding:var(--cp);display:flex;flex-direction:column;gap:10px;transition:border-color .2s;text-decoration:none;color:inherit;}
+.mc:hover{border-color:var(--glow);}
+.mc-ic{font-size:clamp(22px,3vw,28px);}
+.mc-nm{font-size:clamp(12px,1.5vw,14px);font-weight:700;}
+.mc-st{font-family:var(--mono);font-size:11px;margin-top:auto;padding-top:10px;border-top:1px solid var(--border);}
+.mc-st.on{color:var(--green);}
+.mc-st.off{color:var(--dim);}
+body.lm-mobile .g4{grid-template-columns:repeat(2,1fr);}
+
+.widget-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;}
+body.lm-mobile .widget-row{grid-template-columns:1fr;}
+.mini-card{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--r);padding:var(--cp);}
+.mc-val{font-family:var(--mono);font-size:32px;font-weight:300;line-height:1;margin:8px 0 4px;}
+</style>
+{% endblock %}
+{% block content %}
+
+{% if weather %}
+<div class="hero fu">
+  <div style="flex:1;">
+    <div class="h-loc">📍 {{ location }}</div>
+    <div class="h-temp">{{ weather.temperature|round(1) }}<span class="u">°C</span></div>
+    <div class="h-desc">{{ weather.description }}</div>
+    <div class="h-feels">Gefühlt {{ weather.feels_like|round(1) }}°C</div>
+    <div class="h-stats">
+      <div class="h-stat"><div class="ws-l">Luftfeuchte</div><div class="ws-v">{{ weather.humidity }}%</div></div>
+      <div class="h-stat"><div class="ws-l">Wind</div><div class="ws-v">{{ weather.wind_speed|round(0)|int }} km/h</div></div>
+      <div class="h-stat"><div class="ws-l">Aktualisiert</div><div class="ws-v" style="font-size:13px;">{{ weather.timestamp[11:16] }} Uhr</div></div>
+    </div>
+  </div>
+  <div class="h-emoji">{{ weather.emoji }}</div>
+</div>
+{% else %}
+<div class="card fu" style="text-align:center;padding:32px;margin-bottom:14px;">
+  <div style="font-size:28px;margin-bottom:10px;">⚠️</div>
+  <div style="color:var(--muted);">Keine Wetterdaten – bitte aktualisieren.</div>
+  <button class="btn ba" style="margin-top:12px;" onclick="refreshW()">↻ Abrufen</button>
+</div>
+{% endif %}
+
+<!-- Schnell-Widgets: Hunde + Wetter -->
+<div class="widget-row fu d1">
+  <div class="mini-card">
+    <div class="ct">🐕 Hunde – Heute</div>
+    <div class="mc-val" id="w-dog-count">–</div>
+    <div style="font-size:12px;color:var(--muted);">Ereignisse aufgezeichnet</div>
+    <a href="/hunde" class="btn" style="margin-top:12px;font-size:12px;">Details →</a>
+  </div>
+  <div class="mini-card">
+    <div class="ct">🎬 Mediaserver</div>
+    {% if media.running %}
+    <div class="mc-val" style="color:var(--green);">Online</div>
+    <div style="font-size:12px;color:var(--muted);">Jellyfin v{{ media.version }}</div>
+    {% else %}
+    <div class="mc-val" style="color:var(--dim);">Offline</div>
+    <div style="font-size:12px;color:var(--muted);">{{ media.error or 'Nicht erreichbar' }}</div>
+    {% endif %}
+    <a href="/media" class="btn" style="margin-top:12px;font-size:12px;">Details →</a>
+  </div>
+</div>
+
+<!-- 3-Tage-Vorhersage -->
+{% if forecast %}
+<div class="sh fu d2"><h2>Nächste 3 Tage</h2><a href="/weather" class="btn" style="font-size:12px;">Alle 7 Tage →</a></div>
+<div class="fc-wrap g3 fu d3">
+  {% for day in forecast %}
+  <div class="fc">
+    <div class="fc-day">{{ day.weekday }}</div>
+    <div class="fc-dt">{{ day.date_fmt }}</div>
+    <div class="fc-em">{{ day.emoji }}</div>
+    <div class="fc-ds">{{ day.description }}</div>
+    <div class="fc-t"><span class="fc-mx">↑ {{ day.temp_max|round(0)|int }}°</span><span class="fc-mn">↓ {{ day.temp_min|round(0)|int }}°</span></div>
+    {% if day.precipitation and day.precipitation > 0 %}<div class="fc-r">💧 {{ day.precipitation }} mm</div>{% endif %}
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<!-- Module -->
+<div class="sh fu d3"><h2>Module</h2></div>
+<div class="g4 fu d4">
+  <a href="/weather" class="mc"><div class="mc-ic">🌤</div><div class="mc-nm">Wetter</div><div class="mc-st on">● Aktiv</div></a>
+  <a href="/hunde"   class="mc"><div class="mc-ic">🐕</div><div class="mc-nm">Hunde</div><div class="mc-st" id="w-dog-st">● Gestoppt</div></a>
+  <a href="/media"   class="mc"><div class="mc-ic">🎬</div><div class="mc-nm">Mediaserver</div><div class="mc-st {% if media.running %}on{% else %}off{% endif %}">● {% if media.running %}Online{% else %}Offline{% endif %}</div></a>
+  <a href="/appdb"   class="mc"><div class="mc-ic">🗄</div><div class="mc-nm">AppDatabase</div><div class="mc-st on">● Aktiv</div></a>
+</div>
+
+{% endblock %}
+{% block scripts %}
+<script>
+async function refreshW(){
+  const r=await fetch('/api/weather/refresh',{method:'POST'});
+  const d=await r.json();
+  if(d.ok)location.reload();
+}
+// Hunde-Status
+(async()=>{
+  try{
+    const r=await fetch('/api/hunde/state');
+    const d=await r.json();
+    document.getElementById('w-dog-st').textContent=d.running?'● Aktiv':'● Gestoppt';
+    document.getElementById('w-dog-st').className='mc-st '+(d.running?'on':'off');
+    const cr=await fetch('/api/hunde/charts');
+    const cd=await cr.json();
+    document.getElementById('w-dog-count').textContent=cd.stats.total||0;
+  }catch(e){}
+})();
+</script>
+{% endblock %}

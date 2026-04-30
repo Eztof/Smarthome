@@ -1,0 +1,4 @@
+Traceback (most recent call last):
+  File "C:\Users\Smarthome\Desktop\Smarthome\main.py", line 14, in <module>
+    from modules.sensors import manager as sensors
+ImportError: cannot import name 'manager' from 'modules.sensors' (C:\Users\Smarthome\Desktop\Smarthome\core\..\modules\sensors\__init__.py)

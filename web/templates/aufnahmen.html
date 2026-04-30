@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}Aufnahmen – PI·HOME{% endblock %}
+{% block page_title %}Hunde – Aufnahmen{% endblock %}
+{% block head %}
+<style>
+.rec-grid{display:flex;flex-direction:column;gap:8px;}
+.rec-card{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--r);padding:16px 20px;display:flex;align-items:center;gap:16px;transition:border-color .2s;}
+.rec-card:hover{border-color:var(--glow);}
+.rec-ic{font-size:28px;flex-shrink:0;}
+.rec-info{flex:1;min-width:0;}
+.rec-name{font-family:var(--mono);font-size:13px;color:var(--text);margin-bottom:3px;}
+.rec-meta{font-family:var(--mono);font-size:11px;color:var(--dim);}
+audio{height:34px;flex:1;max-width:340px;}
+body.lm-mobile audio{max-width:160px;}
+</style>
+{% endblock %}
+{% block content %}
+
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px;">
+  <div style="font-size:13px;color:var(--muted);">{{ recordings|length }} Aufnahme(n) · je 20 Sekunden (10s vor + 10s nach Ereignis)</div>
+  <a href="/hunde" class="btn" style="font-size:12px;">← Zurück</a>
+</div>
+
+{% if recordings %}
+<div class="rec-grid">
+  {% for r in recordings %}
+  <div class="rec-card" id="rc-{{ loop.index }}">
+    <div class="rec-ic">🎙</div>
+    <div class="rec-info">
+      <div class="rec-name">{{ r.filename.replace('_',' ').replace('.wav','') }}</div>
+      <div class="rec-meta">{{ r.size_kb }} KB · WAV · Mono</div>
+    </div>
+    <audio controls src="/api/sensors/recordings/play/{{ r.filename }}"></audio>
+    <a href="/api/sensors/recordings/play/{{ r.filename }}" download="{{ r.filename }}" class="btn" style="font-size:12px;">⬇</a>
+    <button class="btn br" style="font-size:12px;" onclick="del('{{ r.filename }}','rc-{{ loop.index }}')">✕</button>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="card" style="text-align:center;padding:48px;">
+  <div style="font-size:40px;margin-bottom:12px;">🎙</div>
+  <div style="color:var(--muted);font-size:15px;">Noch keine Aufnahmen vorhanden.</div>
+  <div style="color:var(--dim);font-size:13px;margin-top:8px;">Aufnahmen werden automatisch erstellt sobald der Schwellenwert überschritten wird.</div>
+  <a href="/hunde" class="btn ba" style="margin-top:16px;">Zum Monitor →</a>
+</div>
+{% endif %}
+
+{% endblock %}
+{% block scripts %}
+<script>
+async function del(fn,id){
+  if(!confirm('Aufnahme löschen?'))return;
+  await fetch('/api/sensors/recordings/delete',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({filename:fn})});
+  const el=document.getElementById(id);
+  if(el)el.remove();
+}
+</script>
+{% endblock %}

@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>PI·HOME Sensor</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --bg:#0a0d12;--card:#161c28;--border:#1e2535;
+  --text:#e8edf5;--muted:#5a6480;--dim:#3a4255;
+  --accent:#4fc3f7;--green:#69db7c;--red:#ff6b6b;--warm:#ffb347;
+  --font:'Segoe UI',sans-serif;--mono:'Consolas',monospace;
+}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--font);overflow:hidden;}
+
+/* ── Layout ──────────────────────────────────── */
+.screen{display:flex;flex-direction:column;height:100vh;padding:16px;gap:12px;}
+
+/* ── Header ──────────────────────────────────── */
+.header{display:flex;align-items:center;justify-content:space-between;}
+.logo{font-size:16px;font-weight:800;color:var(--accent);}
+.conn-pill{font-size:11px;font-weight:700;padding:4px 10px;border-radius:20px;border:1px solid;}
+.conn-pill.on{background:rgba(105,219,124,.15);color:var(--green);border-color:rgba(105,219,124,.3);}
+.conn-pill.off{background:var(--border);color:var(--muted);border-color:var(--border);}
+
+/* ── Setup-Screen ────────────────────────────── */
+.setup{display:flex;flex-direction:column;gap:14px;flex:1;justify-content:center;}
+.setup h2{font-size:18px;font-weight:700;text-align:center;margin-bottom:4px;}
+.setup p{font-size:13px;color:var(--muted);text-align:center;}
+.field label{font-size:12px;font-weight:600;color:var(--muted);display:block;margin-bottom:5px;}
+.field input,.field select{
+  width:100%;padding:12px;border-radius:8px;
+  background:var(--card);border:1px solid var(--border);
+  color:var(--text);font-size:15px;font-family:var(--font);
+}
+.field input:focus,.field select:focus{outline:none;border-color:var(--accent);}
+.btn-big{
+  width:100%;padding:16px;border-radius:12px;border:none;
+  font-size:16px;font-weight:700;cursor:pointer;
+  font-family:var(--font);transition:all .2s;
+}
+.btn-start{background:var(--accent);color:#000;}
+.btn-start:active{opacity:.8;}
+
+/* ── Live-Screen ─────────────────────────────── */
+.live{display:none;flex-direction:column;gap:12px;flex:1;}
+
+/* dB-Anzeige */
+.db-display{
+  background:linear-gradient(135deg,#111e35,#0a1220);
+  border:1px solid #2a3550;border-radius:16px;padding:20px;
+  text-align:center;flex:1;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:8px;
+}
+.db-big{font-family:var(--mono);font-size:88px;font-weight:300;line-height:1;transition:color .3s;}
+.db-unit{font-size:18px;color:var(--muted);}
+.db-label{font-size:13px;color:var(--dim);margin-top:4px;}
+
+/* Balken */
+.bar-wrap{height:18px;background:var(--border);border-radius:9px;overflow:hidden;position:relative;width:100%;}
+.bar-fill{height:100%;border-radius:9px;transition:width .1s,background .3s;}
+.bar-mark{position:absolute;top:0;bottom:0;width:3px;background:rgba(255,80,80,.8);border-radius:2px;}
+.bar-labels{display:flex;justify-content:space-between;font-family:var(--mono);font-size:10px;color:var(--dim);margin-top:3px;}
+
+/* Peak + Schwelle */
+.meta-row{display:flex;justify-content:space-between;align-items:center;font-size:13px;}
+.meta-row .lb{color:var(--muted);}
+.meta-row .vl{font-family:var(--mono);font-weight:600;}
+
+/* Aufnahme-Indikator */
+.rec-bar{
+  display:none;align-items:center;justify-content:center;gap:8px;
+  background:rgba(255,107,107,.12);border:1px solid rgba(255,107,107,.3);
+  border-radius:8px;padding:10px;font-size:13px;font-weight:700;color:var(--red);
+}
+.rec-bar.show{display:flex;}
+.rdot{width:10px;height:10px;border-radius:50%;background:var(--red);animation:pulse 1s infinite;}
+
+/* Slider */
+.slider-section{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px;}
+.slider-section label{font-size:12px;font-weight:600;color:var(--muted);display:block;margin-bottom:8px;}
+.thr-val{color:var(--red);font-family:var(--mono);font-size:15px;font-weight:600;}
+input[type=range]{-webkit-appearance:none;width:100%;height:6px;background:var(--border);border-radius:3px;outline:none;margin-top:6px;}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:22px;height:22px;border-radius:50%;background:var(--red);cursor:pointer;border:2px solid var(--card);}
+
+/* Stop-Button */
+.btn-stop{background:rgba(255,107,107,.15);color:var(--red);border:1px solid rgba(255,107,107,.3);border-radius:10px;padding:12px;font-size:14px;font-weight:700;font-family:var(--font);cursor:pointer;width:100%;}
+
+/* Raum-Info */
+.room-badge{font-size:11px;font-weight:600;color:var(--dim);}
+
+/* Verhindert Bildschirm-Abdunkelung durch häufige Touch-Events */
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+</style>
+</head>
+<body>
+<div class="screen">
+  <div class="header">
+    <div class="logo">PI·HOME Sensor</div>
+    <div class="conn-pill off" id="connPill">● Getrennt</div>
+  </div>
+
+  <!-- ── Setup ──────────────────────────────── -->
+  <div class="setup" id="setupScreen">
+    <div>
+      <h2>🎙 Sensor einrichten</h2>
+      <p>Dieses Gerät als Mikrofon-Sensor verwenden</p>
+    </div>
+
+    <div class="field">
+      <label>Gerätename</label>
+      <input type="text" id="devName" placeholder="z.B. Mein Handy" value="Handy">
+    </div>
+
+    <div class="field">
+      <label>Raum</label>
+      <input type="text" id="devRoom" placeholder="z.B. Wohnzimmer" value="Wohnzimmer">
+    </div>
+
+    <div class="field">
+      <label>Schwellenwert: <span id="setupThrVal">65</span> dB</label>
+      <input type="range" id="setupThr" min="30" max="100" value="65"
+        oninput="document.getElementById('setupThrVal').textContent=this.value">
+    </div>
+
+    <button class="btn-big btn-start" onclick="startSensor()">
+      ▶ Sensor starten
+    </button>
+
+    <div id="setupError" style="color:var(--red);font-size:13px;text-align:center;display:none;"></div>
+  </div>
+
+  <!-- ── Live ───────────────────────────────── -->
+  <div class="live" id="liveScreen">
+
+    <div class="db-display">
+      <div class="db-big" id="dbBig" style="color:var(--accent);">0.0</div>
+      <div class="db-unit">dB</div>
+      <div class="db-label" id="roomLabel">Wohnzimmer</div>
+    </div>
+
+    <div>
+      <div class="bar-wrap">
+        <div class="bar-fill" id="barFill" style="width:0%;background:var(--accent);"></div>
+        <div class="bar-mark" id="barMark" style="left:65%;"></div>
+      </div>
+      <div class="bar-labels"><span>0</span><span>50</span><span>100 dB</span></div>
+    </div>
+
+    <div class="meta-row">
+      <span class="lb">Peak</span>
+      <span class="vl" id="peakVal" style="color:var(--warm);">0.0 dB</span>
+      <button onclick="resetPeak()" style="background:none;border:1px solid var(--border);color:var(--muted);padding:4px 10px;border-radius:6px;font-size:12px;cursor:pointer;">Reset</button>
+    </div>
+
+    <div class="rec-bar" id="recBar">
+      <div class="rdot"></div>Aufnahme läuft...
+    </div>
+
+    <div class="slider-section">
+      <label>Schwellenwert: <span class="thr-val" id="liveThrVal">65</span> dB</label>
+      <input type="range" id="liveThr" min="30" max="100" value="65"
+        oninput="onThrChange(this.value)"
+        onchange="sendThreshold(this.value)">
+    </div>
+
+    <button class="btn-stop" onclick="stopSensor()">■ Sensor stoppen</button>
+  </div>
+</div>
+
+<script>
+// ── Konfiguration ──────────────────────────────────────────
+const SERVER = window.location.origin;
+const CHUNK_DURATION = 0.1;   // Sekunden pro Audio-Chunk
+const SAMPLERATE     = 16000; // Hz — niedrig = wenig Datenmenge
+
+// ── State ──────────────────────────────────────────────────
+let socket       = null;
+let audioCtx     = null;
+let mediaStream  = null;
+let processor    = null;
+let peakDb       = 0;
+let threshold    = 65;
+let isRecording  = false;
+
+// ── UI-Elemente ────────────────────────────────────────────
+const setupScreen = document.getElementById('setupScreen');
+const liveScreen  = document.getElementById('liveScreen');
+const connPill    = document.getElementById('connPill');
+const dbBig       = document.getElementById('dbBig');
+const barFill     = document.getElementById('barFill');
+const barMark     = document.getElementById('barMark');
+const peakVal     = document.getElementById('peakVal');
+const recBar      = document.getElementById('recBar');
+const liveThr     = document.getElementById('liveThr');
+const liveThrVal  = document.getElementById('liveThrVal');
+const roomLabel   = document.getElementById('roomLabel');
+const setupError  = document.getElementById('setupError');
+
+// ── Farbe je dB ────────────────────────────────────────────
+function dbColor(db) {
+    if (db < 40) return '#4fc3f7';
+    if (db < 55) return '#43a047';
+    if (db < 70) return '#f9a825';
+    if (db < 80) return '#e64a19';
+    return '#ff3b3b';
+}
+
+// ── Sensor starten ─────────────────────────────────────────
+async function startSensor() {
+    const name  = document.getElementById('devName').value.trim() || 'Handy';
+    const room  = document.getElementById('devRoom').value.trim() || 'Raum';
+    threshold   = parseInt(document.getElementById('setupThr').value);
+
+    setupError.style.display = 'none';
+
+    // Mikrofon-Erlaubnis
+    try {
+        mediaStream = await navigator.mediaDevices.getUserMedia({
+            audio: {
+                sampleRate:  SAMPLERATE,
+                channelCount: 1,
+                echoCancellation: false,
+                noiseSuppression: false,
+                autoGainControl: false,
+            },
+            video: false,
+        });
+    } catch(e) {
+        setupError.style.display = 'block';
+        setupError.textContent   = 'Mikrofon-Zugriff verweigert: ' + e.message;
+        return;
+    }
+
+    // WebSocket verbinden
+    socket = io(SERVER, { transports: ['websocket'] });
+
+    socket.on('connect', () => {
+        connPill.className   = 'conn-pill on';
+        connPill.textContent = '● Verbunden';
+        socket.emit('sensor_register', { name, room, threshold });
+    });
+
+    socket.on('disconnect', () => {
+        connPill.className   = 'conn-pill off';
+        connPill.textContent = '● Getrennt';
+    });
+
+    socket.on('registered', () => {
+        // UI wechseln
+        setupScreen.style.display = 'none';
+        liveScreen.style.display  = 'flex';
+        roomLabel.textContent     = room;
+        liveThr.value             = threshold;
+        liveThrVal.textContent    = threshold;
+        barMark.style.left        = Math.min(100, threshold) + '%';
+
+        // Audio-Verarbeitung starten
+        startAudioProcessing();
+    });
+
+    socket.on('connect_error', (e) => {
+        setupError.style.display = 'block';
+        setupError.textContent   = 'Verbindungsfehler: ' + e.message;
+        stopSensor();
+    });
+}
+
+// ── Audio-Verarbeitung ─────────────────────────────────────
+function startAudioProcessing() {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)({
+        sampleRate: SAMPLERATE,
+    });
+
+    const source     = audioCtx.createMediaStreamSource(mediaStream);
+    const bufferSize = Math.round(SAMPLERATE * CHUNK_DURATION);
+
+    processor = audioCtx.createScriptProcessor(bufferSize, 1, 1);
+
+    processor.onaudioprocess = (e) => {
+        const inputData = e.inputBuffer.getChannelData(0);
+        const chunk     = new Float32Array(inputData);
+
+        // dB berechnen (lokal für schnelle UI-Reaktion)
+        const rms = Math.sqrt(chunk.reduce((s, v) => s + v*v, 0) / chunk.length);
+        const db  = rms < 1e-9 ? 0 : Math.max(0, 20 * Math.log10(rms + 1e-9) + 90);
+
+        updateMeter(db);
+
+        // Audio als Base64 an Server senden
+        if (socket && socket.connected) {
+            const b64 = btoa(String.fromCharCode(...new Uint8Array(chunk.buffer)));
+            socket.emit('audio_chunk', {
+                audio:      b64,
+                samplerate: SAMPLERATE,
+            });
+        }
+    };
+
+    source.connect(processor);
+    processor.connect(audioCtx.destination);
+}
+
+// ── Meter aktualisieren ────────────────────────────────────
+function updateMeter(db) {
+    const color = dbColor(db);
+    dbBig.textContent  = db.toFixed(1);
+    dbBig.style.color  = color;
+    barFill.style.width      = Math.min(100, (db / 100) * 100) + '%';
+    barFill.style.background = color;
+
+    if (db > peakDb) {
+        peakDb = db;
+        peakVal.textContent = peakDb.toFixed(1) + ' dB';
+    }
+
+    // Aufnahme-Indikator (vom Server-Event)
+    // wird über socket-event gesetzt
+}
+
+// ── Schwellenwert ändern ───────────────────────────────────
+function onThrChange(val) {
+    threshold        = parseInt(val);
+    liveThrVal.textContent = val;
+    barMark.style.left     = Math.min(100, threshold) + '%';
+}
+function sendThreshold(val) {
+    if (socket) socket.emit('sensor_threshold', { threshold: parseInt(val) });
+}
+
+// ── Peak reset ─────────────────────────────────────────────
+function resetPeak() {
+    peakDb = 0;
+    peakVal.textContent = '0.0 dB';
+    if (socket) socket.emit('sensor_reset_peak');
+}
+
+// ── Sensor stoppen ─────────────────────────────────────────
+function stopSensor() {
+    if (processor)    { processor.disconnect(); processor = null; }
+    if (audioCtx)     { audioCtx.close();       audioCtx  = null; }
+    if (mediaStream)  { mediaStream.getTracks().forEach(t => t.stop()); mediaStream = null; }
+    if (socket)       { socket.disconnect();     socket    = null; }
+
+    liveScreen.style.display  = 'none';
+    setupScreen.style.display = 'flex';
+    connPill.className        = 'conn-pill off';
+    connPill.textContent      = '● Getrennt';
+    peakDb                    = 0;
+    dbBig.textContent         = '0.0';
+    dbBig.style.color         = 'var(--accent)';
+    barFill.style.width       = '0%';
+}
+
+// ── Bildschirm wach halten (Wake Lock API) ─────────────────
+async function requestWakeLock() {
+    try {
+        if ('wakeLock' in navigator) {
+            await navigator.wakeLock.request('screen');
+            console.log('[WakeLock] Bildschirm bleibt an.');
+        }
+    } catch(e) {
+        console.log('[WakeLock] Nicht verfügbar:', e.message);
+    }
+}
+requestWakeLock();
+document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') requestWakeLock();
+});
+</script>
+</body>
+</html>

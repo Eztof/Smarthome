@@ -1,0 +1,373 @@
+{% extends "base.html" %}
+{% block title %}Hunde – PI·HOME{% endblock %}
+{% block page_title %}Hunde{% endblock %}
+{% block head %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+.h-top{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;}
+body.lm-mobile .h-top{grid-template-columns:1fr;}
+.meter{background:linear-gradient(135deg,#0f1e38,#0a1220);border:1px solid var(--glow);border-radius:var(--r);padding:var(--cp);display:flex;flex-direction:column;gap:14px;}
+.m-disp{display:flex;align-items:flex-end;justify-content:center;gap:16px;padding:10px 0;}
+.m-val{font-family:var(--mono);font-size:clamp(52px,10vw,84px);font-weight:300;line-height:1;transition:color .3s;}
+.m-unit{font-family:var(--mono);font-size:18px;color:var(--muted);margin-bottom:10px;}
+.m-bar{height:14px;background:var(--border);border-radius:7px;overflow:hidden;position:relative;}
+.m-fill{height:100%;border-radius:7px;transition:width .15s,background .3s;background:var(--accent);}
+.m-mark{position:absolute;top:0;bottom:0;width:3px;border-radius:2px;background:rgba(255,80,80,.85);transition:left .2s;}
+.m-lbl{display:flex;justify-content:space-between;font-family:var(--mono);font-size:10px;color:var(--dim);margin-top:3px;}
+.peak-r{display:flex;align-items:center;justify-content:space-between;font-family:var(--mono);font-size:13px;color:var(--muted);}
+.peak-v{color:var(--warm);font-weight:500;}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:4px 12px;border-radius:20px;font-size:12px;font-weight:700;border:1px solid transparent;}
+.pill.on{background:rgba(105,219,124,.15);color:var(--green);border-color:rgba(105,219,124,.3);}
+.pill.off{background:var(--border);color:var(--muted);}
+.ctrl{display:flex;gap:10px;flex-wrap:wrap;}
+.thr-card{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--r);padding:var(--cp);}
+.thr-v{font-family:var(--mono);font-size:48px;font-weight:300;line-height:1;color:var(--red);margin:8px 0;}
+.thr-v .u{font-size:.4em;color:var(--muted);}
+.sl-lab{display:flex;justify-content:space-between;font-family:var(--mono);font-size:10px;color:var(--dim);margin-top:4px;}
+.st-row{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px;}
+.st-c{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--r);padding:14px;text-align:center;}
+.st-v{font-family:var(--mono);font-size:26px;font-weight:300;line-height:1;margin:6px 0 3px;}
+.st-l{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--dim);}
+.log-t{width:100%;border-collapse:collapse;}
+.log-t th{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);padding:8px 14px;text-align:left;border-bottom:1px solid var(--border);}
+.log-t td{padding:10px 14px;border-bottom:1px solid var(--border);font-family:var(--mono);font-size:13px;}
+.log-t tr:last-child td{border-bottom:none;}
+.log-t tr:hover td{background:rgba(255,255,255,.02);}
+.db-b{display:inline-block;padding:2px 8px;border-radius:4px;font-size:12px;font-weight:700;}
+.chart-wrap{position:relative;height:180px;}
+.sensor-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;margin-bottom:14px;}
+.sensor-card{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--r);padding:16px;position:relative;}
+.sensor-card.active{border-color:rgba(105,219,124,.3);}
+.sc-room{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);margin-bottom:4px;}
+.sc-name{font-size:14px;font-weight:700;margin-bottom:8px;}
+.sc-db{font-family:var(--mono);font-size:28px;font-weight:300;line-height:1;}
+.sc-bar{height:6px;background:var(--border);border-radius:3px;margin:8px 0;overflow:hidden;}
+.sc-fill{height:100%;border-radius:3px;transition:width .15s,background .3s;}
+.sc-since{font-size:10px;color:var(--dim);font-family:var(--mono);}
+.sc-rec{position:absolute;top:12px;right:12px;width:8px;height:8px;border-radius:50%;background:var(--red);display:none;animation:pulse 1s infinite;}
+.sensor-card.recording .sc-rec{display:block;}
+.no-sensors{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--r);padding:24px;text-align:center;color:var(--dim);font-size:13px;margin-bottom:14px;}
+.err{background:rgba(255,107,107,.1);border:1px solid rgba(255,107,107,.3);border-radius:var(--rs);padding:10px 14px;color:var(--red);font-size:13px;margin-bottom:14px;display:none;}
+.rec-indicator{display:none;align-items:center;gap:8px;background:rgba(255,107,107,.12);border:1px solid rgba(255,107,107,.3);border-radius:var(--rs);padding:8px 14px;font-size:13px;font-weight:600;color:var(--red);}
+.rec-indicator.show{display:flex;}
+.rec-dot{width:10px;height:10px;border-radius:50%;background:var(--red);animation:pulse 1s infinite;}
+.rec-list{display:flex;flex-direction:column;gap:6px;max-height:360px;overflow-y:auto;}
+.rec-item{display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--bg);border:1px solid var(--border);border-radius:var(--rs);transition:border-color .15s;}
+.rec-item:hover{border-color:var(--glow);}
+.rec-info{flex:1;min-width:0;}
+.rec-ts{font-family:var(--mono);font-size:12px;color:var(--text);}
+.rec-size{font-family:var(--mono);font-size:11px;color:var(--dim);}
+audio{height:32px;flex-shrink:0;}
+</style>
+{% endblock %}
+{% block content %}
+
+<div class="err" id="errBox"></div>
+
+<div class="h-top fu">
+  <!-- dB-Meter -->
+  <div class="meter">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+      <div class="ct" style="margin:0;">Live dB-Pegel</div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <div class="rec-indicator" id="recIndicator"><div class="rec-dot"></div>Aufnahme läuft...</div>
+        <span class="pill off" id="pill">● Gestoppt</span>
+      </div>
+    </div>
+    <div class="m-disp">
+      <div class="m-val" id="dbv" style="color:var(--accent);">—</div>
+      <div class="m-unit">dB</div>
+    </div>
+    <div class="m-bar">
+      <div class="m-fill" id="mfill" style="width:0%"></div>
+      <div class="m-mark" id="mmark" style="left:65%"></div>
+    </div>
+    <div class="m-lbl"><span>0</span><span>50</span><span>100 dB</span></div>
+    <div class="peak-r">
+      <span>Peak</span>
+      <span class="peak-v" id="peakv">— dB</span>
+      <button class="btn" style="padding:5px 10px;font-size:11px;" onclick="resetPeak()">Reset</button>
+    </div>
+    <div class="ctrl">
+      <button class="btn ba" id="btnStart" onclick="startM()" style="flex:1;justify-content:center;">▶ Starten</button>
+      <button class="btn br" id="btnStop"  onclick="stopM()"  style="flex:1;justify-content:center;" disabled>■ Stoppen</button>
+    </div>
+  </div>
+
+  <!-- Einstellungen -->
+  <div class="thr-card">
+    <div class="ct">Einstellungen</div>
+    <div style="color:var(--muted);font-size:12px;margin-bottom:4px;">Schwellenwert</div>
+    <div class="thr-v"><span id="thrDisp">{{ state.threshold|int }}</span><span class="u"> dB</span></div>
+    <input type="range" id="thrSlider" min="30" max="100" step="1" value="{{ state.threshold|int }}"
+      oninput="onSlide(this.value)" onchange="saveThr(this.value)">
+    <div class="sl-lab"><span>30 dB</span><span>65 dB</span><span>100 dB</span></div>
+
+    <div style="color:var(--muted);font-size:12px;margin-top:16px;margin-bottom:4px;">Mikrofon-Gerät</div>
+    <select id="devSel" onchange="setDev(this.value)">
+      <option value="-1">Standard-Mikrofon</option>
+      {% for d in devices %}<option value="{{ d.index }}">{{ d.name }}</option>{% endfor %}
+    </select>
+    <div style="font-size:11px;color:var(--dim);margin-top:6px;">Nach Gerätewechsel Monitor neu starten.</div>
+  </div>
+</div>
+
+<!-- Verbundene Sensoren -->
+<div class="sh fu"><h2>Verbundene Sensoren <span id="sensorCount" style="color:var(--dim);font-family:var(--mono);font-size:11px;">(0)</span></h2><a href="/sensor" target="_blank" class="btn ba" style="font-size:12px;">+ Sensor hinzufügen</a></div>
+<div id="sensorGrid" class="sensor-grid fu d1"></div>
+
+<!-- Statistiken heute -->
+<div class="st-row fu d1">
+  <div class="st-c"><div class="st-l">Heute</div><div class="st-v" id="stTotal">{{ stats.total or 0 }}</div><div style="font-size:11px;color:var(--muted);">Ereignisse</div></div>
+  <div class="st-c"><div class="st-l">Lautester Wert</div><div class="st-v" id="stMax">{{ '%.1f'|format(stats.max_db) if stats.max_db else '—' }}</div><div style="font-size:11px;color:var(--muted);">dB</div></div>
+  <div class="st-c"><div class="st-l">Durchschnitt</div><div class="st-v" id="stAvg">{{ '%.1f'|format(stats.avg_db) if stats.avg_db else '—' }}</div><div style="font-size:11px;color:var(--muted);">dB</div></div>
+</div>
+
+<!-- Charts -->
+<div class="g2 fu d2" style="margin-bottom:14px;">
+  <div class="card"><div class="ct">Ereignisse heute (stündlich)</div><div class="chart-wrap"><canvas id="hChart"></canvas></div></div>
+  <div class="card"><div class="ct">Letzte 7 Tage</div><div class="chart-wrap"><canvas id="dChart"></canvas></div></div>
+</div>
+
+<!-- Event-Log -->
+<div class="card fu d3">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
+    <div class="ct" style="margin:0;">Ereignis-Log</div>
+    <button class="btn br" onclick="clearLog()" style="font-size:12px;">🗑 Alles löschen</button>
+  </div>
+  <div style="max-height:400px;overflow-y:auto;">
+    <table class="log-t">
+      <thead><tr><th>Zeitpunkt</th><th>Pegel</th><th>Dauer</th><th>Schwelle</th></tr></thead>
+      <tbody id="logBody">
+        {% for e in events %}
+        <tr>
+          <td>{{ e.timestamp }}</td>
+          <td><span class="db-b" style="{{ db_badge_style(e.db_level) }}">{{ e.db_level }} dB</span></td>
+          <td style="color:var(--muted);">{{ '%.1f'|format(e.duration_s) }}s</td>
+          <td style="color:var(--dim);">{{ e.threshold }} dB</td>
+        </tr>
+        {% else %}
+        <tr id="emptyRow"><td colspan="4" style="text-align:center;color:var(--dim);padding:24px;">Noch keine Ereignisse.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Aufnahmen -->
+<div class="card fu d4">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
+    <div class="ct" style="margin:0;">Aufnahmen <span style="font-family:var(--mono);font-size:11px;color:var(--dim);">(10s vor + 10s nach Ereignis)</span></div>
+    <a href="/hunde/aufnahmen" class="btn" style="font-size:12px;">Alle anzeigen →</a>
+  </div>
+  <div class="rec-list" id="recList">
+    <div id="recEmpty" style="color:var(--dim);font-size:13px;padding:16px;text-align:center;">Noch keine Aufnahmen vorhanden.</div>
+  </div>
+</div>
+
+{% endblock %}
+{% block scripts %}
+<script>
+// ── Chart-Daten ────────────────────────────────────────────
+const hData={{ hourly|tojson }};
+const dData={{ daily|tojson }};
+
+function mkChart(id,labels,values,color,label){
+  const cv=document.getElementById(id);
+  if(!cv)return null;
+  const cx=cv.getContext('2d');
+  const g=cx.createLinearGradient(0,0,0,180);
+  g.addColorStop(0,color.replace(')',', 0.3)').replace('rgb','rgba'));
+  g.addColorStop(1,color.replace(')',', 0)').replace('rgb','rgba'));
+  return new Chart(cx,{
+    type:'bar',
+    data:{labels,datasets:[{label,data:values,backgroundColor:g,borderColor:color,borderWidth:1.5,borderRadius:4}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{backgroundColor:'#161c28',borderColor:'#2a3550',borderWidth:1,bodyColor:'#e8edf5',padding:10}},
+      scales:{x:{grid:{color:'#1e2535'},ticks:{color:'#5a6480',font:{family:'DM Mono',size:10}}},y:{grid:{color:'#1e2535'},ticks:{color:'#5a6480',font:{family:'DM Mono',size:10},stepSize:1},min:0}}}
+  });
+}
+
+// Stündlich
+if(hData.length){
+  const all=Array.from({length:24},(_,i)=>String(i).padStart(2,'0'));
+  const map=Object.fromEntries(hData.map(d=>[d.hour,d.count]));
+  mkChart('hChart',all.map(h=>h+':00'),all.map(h=>map[h]||0),'rgb(79,195,247)','Ereignisse');
+}else{
+  mkChart('hChart',['Heute'],[0],'rgb(79,195,247)','Ereignisse');
+}
+// Täglich
+if(dData.length){
+  const days=['Mo','Di','Mi','Do','Fr','Sa','So'];
+  const lbs=dData.map(d=>{try{const dt=new Date(d.day);return days[dt.getDay()]+' '+d.day.slice(8)+'.';}catch(e){return d.day;}});
+  mkChart('dChart',lbs,dData.map(d=>d.count),'rgb(124,131,255)','Ereignisse');
+}
+
+// ── Meter-Logic ────────────────────────────────────────────
+let polling=false,pollT=null;
+const MAX=100;
+function dbColor(db,a=1){
+  if(db<40)return `rgba(79,195,247,${a})`;
+  if(db<55)return `rgba(67,160,71,${a})`;
+  if(db<70)return `rgba(249,168,37,${a})`;
+  if(db<80)return `rgba(230,74,25,${a})`;
+  return `rgba(255,59,59,${a})`;
+}
+function updateMeter(s){
+  const db=s.current_db,pk=s.peak_db,th=s.threshold;
+  const v=document.getElementById('dbv');
+  v.textContent=s.running?db.toFixed(1):'—';
+  v.style.color=s.running?dbColor(db):'var(--accent)';
+  const fill=document.getElementById('mfill');
+  fill.style.width=Math.min(100,(db/MAX)*100)+'%';
+  fill.style.background=dbColor(db);
+  document.getElementById('mmark').style.left=Math.min(100,(th/MAX)*100)+'%';
+  document.getElementById('peakv').textContent=(s.running?pk.toFixed(1):'—')+' dB';
+  const pill=document.getElementById('pill');
+  pill.className='pill '+(s.running?'on':'off');
+  pill.textContent=s.running?'● Aktiv':'● Gestoppt';
+  document.getElementById('btnStart').disabled=s.running;
+  document.getElementById('btnStop').disabled=!s.running;
+  const eb=document.getElementById('errBox');
+  if(s.error){eb.style.display='block';eb.textContent='⚠️ '+s.error;}
+  else eb.style.display='none';
+}
+async function poll(){
+  try{const r=await fetch('/api/hunde/state');const s=await r.json();updateMeter(s);polling=s.running;}catch(e){}
+  if(polling)pollT=setTimeout(poll,400);
+}
+async function startM(){await fetch('/api/hunde/start',{method:'POST'});polling=true;clearTimeout(pollT);poll();}
+async function stopM(){
+  await fetch('/api/hunde/stop',{method:'POST'});polling=false;clearTimeout(pollT);
+  const r=await fetch('/api/hunde/state');updateMeter(await r.json());
+}
+function onSlide(v){
+  document.getElementById('thrDisp').textContent=v;
+  document.getElementById('mmark').style.left=Math.min(100,(parseInt(v)/MAX)*100)+'%';
+}
+let saveTm=null;
+function saveThr(v){clearTimeout(saveTm);saveTm=setTimeout(async()=>{await fetch('/api/hunde/threshold',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({threshold:parseFloat(v)})});},300);}
+async function setDev(v){await fetch('/api/hunde/device',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({device_index:parseInt(v)})});}
+async function resetPeak(){await fetch('/api/hunde/reset_peak',{method:'POST'});}
+async function clearLog(){
+  if(!confirm('Alle Ereignisse löschen?'))return;
+  await fetch('/api/hunde/clear',{method:'POST'});
+  document.getElementById('logBody').innerHTML='<tr id="emptyRow"><td colspan="4" style="text-align:center;color:var(--dim);padding:24px;">Noch keine Ereignisse.</td></tr>';
+  ['stTotal','stMax','stAvg'].forEach(id=>document.getElementById(id).textContent='—');
+}
+// Log live refresh
+setInterval(async()=>{
+  try{
+    const r=await fetch('/api/hunde/events');const ev=await r.json();
+    if(!ev.length)return;
+    const er=document.getElementById('emptyRow');if(er)er.remove();
+    const body=document.getElementById('logBody');
+    if(ev.length<=body.querySelectorAll('tr').length)return;
+    body.innerHTML=ev.map(e=>{
+      const c=e.db_level<40?'#4fc3f7':e.db_level<55?'#69db7c':e.db_level<70?'#ffb347':e.db_level<80?'#ff6b00':'#ff3b3b';
+      const rgb=c.slice(1);const rv=parseInt(rgb.slice(0,2),16),gv=parseInt(rgb.slice(2,4),16),bv=parseInt(rgb.slice(4,6),16);
+      return `<tr><td>${e.timestamp}</td><td><span class="db-b" style="background:rgba(${rv},${gv},${bv},.15);color:${c};">${e.db_level} dB</span></td><td style="color:var(--muted);">${parseFloat(e.duration_s).toFixed(1)}s</td><td style="color:var(--dim);">${e.threshold} dB</td></tr>`;
+    }).join('');
+    // Stats aktualisieren
+    const sr=await fetch('/api/hunde/charts');const sd=await sr.json();
+    if(sd.stats){
+      document.getElementById('stTotal').textContent=sd.stats.total||0;
+      document.getElementById('stMax').textContent=sd.stats.max_db?parseFloat(sd.stats.max_db).toFixed(1):'—';
+      document.getElementById('stAvg').textContent=sd.stats.avg_db?parseFloat(sd.stats.avg_db).toFixed(1):'—';
+    }
+  }catch(e){}
+},5000);
+// Aufnahme-Indikator
+function updateRecIndicator(recording){
+  document.getElementById('recIndicator').classList.toggle('show', recording);
+}
+
+// Aufnahmen laden
+async function loadRecordings(){
+  try{
+    const r=await fetch('/api/hunde/recordings');
+    const recs=await r.json();
+    const list=document.getElementById('recList');
+    const empty=document.getElementById('recEmpty');
+    if(!recs.length){if(empty)empty.style.display='block';return;}
+    if(empty)empty.style.display='none';
+    // Nur neu hinzugekommen anzeigen
+    const current=list.querySelectorAll('.rec-item').length;
+    if(recs.length<=current)return;
+    list.innerHTML=recs.slice(0,10).map(r=>`
+      <div class="rec-item">
+        <div class="rec-info">
+          <div class="rec-ts">${r.filename.replace(/_/g,' ').replace('.wav','')}</div>
+          <div class="rec-size">${r.size_kb} KB</div>
+        </div>
+        <audio controls src="/api/hunde/recordings/play/${encodeURIComponent(r.filename)}"></audio>
+        <button class="btn br" style="padding:5px 8px;font-size:11px;" onclick="delRec('${r.filename}',this)">✕</button>
+      </div>
+    `).join('');
+  }catch(e){}
+}
+async function delRec(fn,btn){
+  if(!confirm('Aufnahme löschen?'))return;
+  btn.disabled=true;
+  await fetch('/api/hunde/recordings/delete',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({filename:fn})});
+  btn.closest('.rec-item').remove();
+}
+
+// Poll erweitern um recording-Status
+const _origPoll=poll;
+async function poll(){
+  try{const r=await fetch('/api/hunde/state');const s=await r.json();updateMeter(s);updateRecIndicator(s.recording||false);polling=s.running;}catch(e){}
+  if(polling)pollT=setTimeout(poll,400);
+}
+
+setInterval(loadRecordings,5000);
+
+// ── Sensor-Grid aktualisieren ─────────────────────────────
+function dbColor(db){
+  if(db<40)return'#4fc3f7';if(db<55)return'#43a047';
+  if(db<70)return'#f9a825';if(db<80)return'#e64a19';return'#ff3b3b';
+}
+
+let sensorSocket = null;
+
+function initSensorSocket(){
+  sensorSocket = io(window.location.origin,{transports:['websocket']});
+  sensorSocket.on('sensors_update', renderSensors);
+  sensorSocket.on('sensor_db_update', data => {
+    if(data.db) renderSensors(data.db);
+  });
+}
+
+function renderSensors(list){
+  const grid = document.getElementById('sensorGrid');
+  const count = document.getElementById('sensorCount');
+  count.textContent = '('+list.length+')';
+  if(!list.length){
+    grid.innerHTML = '<div class="no-sensors">Noch kein Sensor verbunden.<br>Öffne <strong>/sensor</strong> auf einem Handy im selben WLAN.</div>';
+    return;
+  }
+  grid.innerHTML = list.map(s => {
+    const col = dbColor(s.db);
+    const pct = Math.min(100,(s.db/100)*100);
+    return `<div class="sensor-card ${s.recording?'recording':''}">
+      <div class="sc-rec"></div>
+      <div class="sc-room">${s.room}</div>
+      <div class="sc-name">${s.name}</div>
+      <div class="sc-db" style="color:${col};">${s.db.toFixed(1)} <span style="font-size:14px;color:var(--muted);">dB</span></div>
+      <div class="sc-bar"><div class="sc-fill" style="width:${pct}%;background:${col};"></div></div>
+      <div class="sc-since">Seit ${s.connected_at} · Peak ${s.peak.toFixed(1)} dB</div>
+    </div>`;
+  }).join('');
+}
+
+initSensorSocket();
+
+// Init
+(async()=>{
+  const r=await fetch('/api/hunde/state');const s=await r.json();
+  updateMeter(s);
+  updateRecIndicator(s.recording||false);
+  if(s.running){polling=true;poll();}
+  loadRecordings();
+})();
+</script>
+{% endblock %}

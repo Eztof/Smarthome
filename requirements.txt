@@ -1,0 +1,11 @@
+flask>=3.0.0
+requests>=2.31.0
+apscheduler>=3.10.4
+python-dotenv>=1.0.0
+sounddevice>=0.4.6
+numpy>=1.24.0
+pytz>=2024.1
+psutil>=5.9.0
+flask-socketio>=5.3.6
+simple-websocket>=1.0.0
+pyopenssl>=24.0.0
