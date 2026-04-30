@@ -1,4 +1,21 @@
+C:\Users\Smarthome\Desktop\Smarthome\main.py:5: EventletDeprecationWarning: 
+Eventlet is deprecated. It is currently being maintained in bugfix mode, and
+we strongly recommend against using it for new projects.
+
+If you are already using Eventlet, we recommend migrating to a different
+framework.  For more detail see
+https://eventlet.readthedocs.io/en/latest/asyncio/migration.html
+
+  import eventlet
+1 RLock(s) were not greened, to fix this error make sure you run eventlet.monkey_patch() before importing any other modules.
+
+=== PI-HOME Smarthome ===
+OK: Datenbank bereit: C:\Users\Smarthome\Desktop\Smarthome\data\smarthome.db
+[Start] Wetterdaten werden abgerufen...
+[Wetter] Aktualisiert: 2026-04-30 23:03:40
+[Scheduler] Wetter alle 5 Min.
 Traceback (most recent call last):
-  File "C:\Users\Smarthome\Desktop\Smarthome\main.py", line 14, in <module>
-    from modules.sensors import manager as sensors
-ImportError: cannot import name 'manager' from 'modules.sensors' (C:\Users\Smarthome\Desktop\Smarthome\core\..\modules\sensors\__init__.py)
+  File "C:\Users\Smarthome\Desktop\Smarthome\main.py", line 100, in <module>
+    if cert_file and key_file:
+       ^^^^^^^^^
+NameError: name 'cert_file' is not defined

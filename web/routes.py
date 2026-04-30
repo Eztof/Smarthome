@@ -304,3 +304,77 @@ def api_sensors_recording_play(filename):
     if os.path.exists(path):
         return send_file(path, mimetype="audio/wav")
     return jsonify({"error": "Datei nicht gefunden"}), 404
+
+
+# ════════════════════════════════════════════════════════════
+#  Zertifikat-Download (für Handy-Installation)
+# ════════════════════════════════════════════════════════════
+
+@bp.route("/cert")
+def cert_page():
+    return """<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Zertifikat installieren</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:#0a0d12;color:#e8edf5;font-family:'Segoe UI',sans-serif;padding:24px;line-height:1.6;}
+h1{color:#4fc3f7;font-size:22px;margin-bottom:8px;}
+p{color:#5a6480;font-size:14px;margin-bottom:20px;}
+.step{background:#161c28;border:1px solid #1e2535;border-radius:12px;padding:16px;margin-bottom:12px;}
+.step-n{color:#4fc3f7;font-weight:700;font-size:13px;margin-bottom:6px;}
+.step-t{font-size:15px;font-weight:600;margin-bottom:4px;}
+.step-d{color:#5a6480;font-size:13px;}
+.btn{display:block;background:#4fc3f7;color:#000;font-weight:700;font-size:16px;
+     padding:16px;border-radius:12px;text-align:center;text-decoration:none;
+     margin:20px 0;border:none;cursor:pointer;width:100%;}
+.warn{background:rgba(255,179,71,0.1);border:1px solid rgba(255,179,71,0.3);
+      border-radius:8px;padding:12px;color:#ffb347;font-size:13px;margin-bottom:16px;}
+</style>
+</head>
+<body>
+<h1>🔒 Zertifikat installieren</h1>
+<p>Damit das Mikrofon über WLAN funktioniert, muss das Sicherheitszertifikat einmalig installiert werden.</p>
+
+<div class="warn">⚠️ Nur im eigenen Heimnetz verwenden. Das Zertifikat gilt nur für diesen Server.</div>
+
+<a href="/cert/download" class="btn">⬇ Zertifikat herunterladen</a>
+
+<div class="step">
+  <div class="step-n">Schritt 1</div>
+  <div class="step-t">Zertifikat herunterladen</div>
+  <div class="step-d">Auf den Button oben tippen. Die Datei <strong>pihome.crt</strong> wird heruntergeladen.</div>
+</div>
+<div class="step">
+  <div class="step-n">Schritt 2 – Android</div>
+  <div class="step-t">Einstellungen öffnen</div>
+  <div class="step-d">Einstellungen → Sicherheit → Mehr Sicherheitseinstellungen → Zertifikate installieren → CA-Zertifikat → Trotzdem installieren → Datei auswählen</div>
+</div>
+<div class="step">
+  <div class="step-n">Schritt 2 – iPhone</div>
+  <div class="step-t">Profil installieren</div>
+  <div class="step-d">Nach dem Download: Einstellungen → Allgemein → VPN & Geräteverwaltung → Profil installieren → Einstellungen → Allgemein → Info → Zertifikatsvertrauenseinstellungen → aktivieren</div>
+</div>
+<div class="step">
+  <div class="step-n">Schritt 3</div>
+  <div class="step-t">Sensor öffnen</div>
+  <div class="step-d">Zurück zu <a href="/sensor" style="color:#4fc3f7;">/sensor</a> — jetzt funktioniert das Mikrofon.</div>
+</div>
+</body>
+</html>"""
+
+
+@bp.route("/cert/download")
+def cert_download():
+    import os
+    cert_path = os.path.join(os.path.dirname(config.__file__), "data", "cert.pem")
+    if os.path.exists(cert_path):
+        return send_file(
+            cert_path,
+            mimetype="application/x-x509-ca-cert",
+            as_attachment=True,
+            download_name="pihome.crt",
+        )
+    return "Kein Zertifikat gefunden.", 404
