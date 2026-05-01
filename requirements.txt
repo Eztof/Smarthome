@@ -10,3 +10,4 @@ flask-socketio>=5.3.6
 simple-websocket>=1.0.0
 pyopenssl>=24.0.0
 eventlet>=0.35.0
+bleak>=0.21.0

@@ -1,10 +1,13 @@
 # ═══════════════════════════════════════════════════════════
 #  main.py  –  Smarthome Einstiegspunkt
+#  WICHTIG: eventlet.monkey_patch() muss als allererstes!
 # ═══════════════════════════════════════════════════════════
 
+# ── 1. Eventlet patchen BEVOR alles andere importiert wird ─
 import eventlet
 eventlet.monkey_patch()
 
+# ── 2. Erst jetzt alle anderen Imports ────────────────────
 import os, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
@@ -13,8 +16,8 @@ from flask_socketio import SocketIO, emit
 import config
 from core.database import init_db
 from core import scheduler
-from modules.weather import fetcher as weather
-from modules.sensors import manager as sensors
+from modules.weather    import fetcher  as weather
+from modules.sensors    import manager  as sensors
 from web.routes import bp
 
 # ── Flask + SocketIO ─────────────────────────────────────
@@ -23,7 +26,8 @@ app = Flask(
     template_folder="web/templates",
     static_folder="web/static",
 )
-app.config["SECRET_KEY"] = "pihome-secret-2024"
+app.config["SECRET_KEY"]         = "pihome-secret-2024"
+app.config["MAX_CONTENT_LENGTH"] = 500 * 1024 * 1024  # 500 MB Upload-Limit
 
 socketio = SocketIO(
     app,
@@ -86,6 +90,33 @@ def on_reset_peak():
     sensors.reset_peak(get_sid())
 
 
+# ── Medien-Dateiserver (Port 5001, separater Prozess) ─────
+MEDIA_PORT = 5001
+
+def start_media_server():
+    import subprocess as _sp
+    from modules.sensors.manager import RECORDINGS_DIR
+    script = os.path.join(os.path.dirname(__file__), "media_server.py")
+    _sp.Popen(
+        [sys.executable, script, RECORDINGS_DIR, str(MEDIA_PORT)],
+        creationflags=getattr(_sp, "CREATE_NO_WINDOW", 0),
+    )
+    print(f"[Media] Dateiserver gestartet auf Port {MEDIA_PORT}")
+
+
+def start_thermopro_scanner():
+    import subprocess as _sp
+    script = os.path.join(os.path.dirname(__file__), "thermopro_scanner.py")
+    if not os.path.exists(script):
+        print("[ThermoPro] thermopro_scanner.py nicht gefunden – Scanner deaktiviert")
+        return
+    _sp.Popen(
+        [sys.executable, script],
+        creationflags=getattr(_sp, "CREATE_NO_WINDOW", 0),
+    )
+    print("[ThermoPro] BLE-Scanner-Prozess gestartet")
+
+
 # ── Start ─────────────────────────────────────────────────
 if __name__ == "__main__":
     print("\n=== PI-HOME Smarthome ===")
@@ -96,9 +127,11 @@ if __name__ == "__main__":
     weather.fetch_and_store()
 
     scheduler.start()
+    start_media_server()
+    start_thermopro_scanner()
 
-    print(f"Laeuft auf:  http://localhost:{config.PORT}")
-    print(f"Netzwerk:    http://192.168.178.104:{config.PORT}")
+    print(f"Laeuft auf:   http://localhost:{config.PORT}")
+    print(f"Netzwerk:     http://192.168.178.104:{config.PORT}")
     print(f"Handy-Sensor: http://192.168.178.104:{config.PORT}/sensor")
     print("=========================================\n")
 

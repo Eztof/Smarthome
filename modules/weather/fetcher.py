@@ -109,13 +109,15 @@ def fetch_and_store():
           c.get("relative_humidity_2m"), c.get("wind_speed_10m"),
           c.get("wind_direction_10m"), code, desc, c.get("is_day",1)))
 
-    # Stündlich
+    # Stündlich – alle verfügbaren Tage speichern (heute + Prognose)
     h     = data.get("hourly", {})
     times = h.get("time", [])
-    cur.execute("DELETE FROM weather_hourly WHERE date=?", (today,))
+    # Alle betroffenen Daten löschen und neu einfügen
+    affected_dates = set(t[:10] for t in times)
+    for d in affected_dates:
+        cur.execute("DELETE FROM weather_hourly WHERE date=?", (d,))
     for i, t in enumerate(times):
-        if not t.startswith(today):
-            continue
+        date_part = t[:10]
         hc   = h["weather_code"][i] if i < len(h.get("weather_code",[])) else 0
         hdesc, _ = wmo_info(hc)
         cur.execute("""
@@ -123,7 +125,7 @@ def fetch_and_store():
             (date,hour_time,temperature,feels_like,humidity,
              wind_speed,precipitation_prob,weather_code,description)
             VALUES (?,?,?,?,?,?,?,?,?)
-        """, (today, t[11:16],
+        """, (date_part, t[11:16],
               h["temperature_2m"][i]           if i < len(h.get("temperature_2m",[])) else None,
               h["apparent_temperature"][i]      if i < len(h.get("apparent_temperature",[])) else None,
               h["relative_humidity_2m"][i]      if i < len(h.get("relative_humidity_2m",[])) else None,

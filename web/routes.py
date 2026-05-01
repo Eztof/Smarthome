@@ -10,6 +10,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 import config
 from modules.weather  import fetcher   as weather
 from modules.sensors  import manager   as sensors
+from modules.thermopro import manager  as thermopro
 from flask import send_file
 from modules.hunde    import monitor   as hunde
 from modules.media    import jellyfin  as media
@@ -20,37 +21,29 @@ TZ = pytz.timezone(config.TIMEZONE)
 
 
 def send_file_range(path, mimetype):
-    """Sendet Datei mit HTTP Range-Support (nötig für Audio/Video-Player im Browser)."""
+    """Sendet Mediendateien mit Range-Support (alles in RAM, Eventlet-kompatibel)."""
     import re
     file_size = os.path.getsize(path)
     range_header = request.headers.get("Range", None)
 
+    # Gesamte Datei lesen (kein Generator – Eventlet verträgt kein Streaming)
+    with open(path, "rb") as f:
+        file_data = f.read()
+
     if range_header:
-        m = re.search(r"bytes=(\d+)-(\d*)", range_header)
+        m = re.search(r"bytes=([0-9]+)-([0-9]*)", range_header)
         if m:
-            byte_start = int(m.group(1))
-            byte_end   = int(m.group(2)) if m.group(2) else file_size - 1
-            byte_end   = min(byte_end, file_size - 1)
-            length     = byte_end - byte_start + 1
-
-            with open(path, "rb") as f:
-                f.seek(byte_start)
-                data = f.read(length)
-
-            resp = Response(
-                data,
-                status=206,
-                mimetype=mimetype,
-                direct_passthrough=True,
-            )
-            resp.headers["Content-Range"]  = f"bytes {byte_start}-{byte_end}/{file_size}"
+            start = int(m.group(1))
+            end   = int(m.group(2)) if m.group(2) else file_size - 1
+            end   = min(end, file_size - 1)
+            data  = file_data[start:end + 1]
+            resp  = Response(data, status=206, mimetype=mimetype)
+            resp.headers["Content-Range"]  = f"bytes {start}-{end}/{file_size}"
             resp.headers["Accept-Ranges"]  = "bytes"
-            resp.headers["Content-Length"] = str(length)
+            resp.headers["Content-Length"] = str(len(data))
             return resp
 
-    with open(path, "rb") as f:
-        data = f.read()
-    resp = Response(data, status=200, mimetype=mimetype)
+    resp = Response(file_data, status=200, mimetype=mimetype)
     resp.headers["Accept-Ranges"]  = "bytes"
     resp.headers["Content-Length"] = str(file_size)
     return resp
@@ -106,16 +99,67 @@ def index():
 
 @bp.route("/weather")
 def weather_page():
-    n = now_local()
+    from datetime import datetime, timedelta
+    n    = now_local()
+    # Datum-Navigation: ?date=YYYY-MM-DD
+    date_str  = request.args.get("date", n.strftime("%Y-%m-%d"))
+    try:
+        sel_date  = datetime.strptime(date_str, "%Y-%m-%d")
+    except Exception:
+        sel_date  = n.replace(tzinfo=None)
+
+    today_str = n.strftime("%Y-%m-%d")
+    is_today  = date_str == today_str
+
+    # Vorheriger / nächster Tag
+    prev_date = (sel_date - timedelta(days=1)).strftime("%Y-%m-%d")
+    next_date = (sel_date + timedelta(days=1)).strftime("%Y-%m-%d")
+
+    # Maximales Datum: heute + Forecast-Tage
+    max_date  = (n + timedelta(days=6)).strftime("%Y-%m-%d")
+    # Minimales Datum: ältester Stundeneintrag in DB
+    from core.database import get_connection as _gc
+    _conn = _gc()
+    _row  = _conn.execute("SELECT MIN(date) as d FROM weather_hourly").fetchone()
+    _conn.close()
+    min_date = (_row["d"] if _row and _row["d"] else today_str)
+
+    # Stundendaten + Tagesprognose für gewählten Tag
+    from core.database import get_connection as gc2
+    conn2  = gc2()
+    hourly = [dict(r) for r in conn2.execute(
+        "SELECT * FROM weather_hourly WHERE date=? ORDER BY hour_time ASC", (date_str,)
+    ).fetchall()]
+    # Tageseintrag für gewähltes Datum (aus Prognose)
+    day_entry = None
+    for d in weather.get_forecast():
+        if d.get("forecast_date") == date_str:
+            day_entry = d
+            break
+    conn2.close()
+
     return render_template("weather.html",
-        current   = weather.get_current(),
-        forecast  = weather.get_forecast(),
-        hourly    = weather.get_hourly_today(),
-        ti        = time_info(),
-        location  = config.LOCATION_NAME,
-        now_hour  = n.strftime("%H"),
-        now_minute= n.minute,
-        now_month = n.month - 1,
+        current    = weather.get_current() if is_today else None,
+        day_entry  = day_entry,
+        rain_top   = getattr(config, "WEATHER_RAIN_OPACITY_TOP", 0.55),
+        rain_btm   = getattr(config, "WEATHER_RAIN_OPACITY_BTM", 0.08),
+        rain_brd   = getattr(config, "WEATHER_RAIN_BORDER", 0.6),
+        temp_fill  = getattr(config, "WEATHER_TEMP_OPACITY", 0.32),
+        forecast   = weather.get_forecast(),
+        hourly     = hourly,
+        ti         = time_info(),
+        location   = config.LOCATION_NAME,
+        now_hour   = n.strftime("%H"),
+        now_minute = n.minute,
+        now_month  = n.month - 1,
+        sel_date   = date_str,
+        is_today   = is_today,
+        prev_date  = prev_date,
+        next_date  = next_date,
+        min_date   = min_date,
+        max_date   = max_date,
+        sel_weekday= ["Montag","Dienstag","Mittwoch","Donnerstag","Freitag","Samstag","Sonntag"][sel_date.weekday()],
+        sel_datefmt= sel_date.strftime("%d. ") + ["Januar","Februar","März","April","Mai","Juni","Juli","August","September","Oktober","November","Dezember"][sel_date.month-1],
     )
 
 
@@ -451,3 +495,62 @@ def api_sensors_upload_video():
     print(f"[Video] Gespeichert: {filename} ({size_kb} KB) von {name}")
 
     return jsonify({"ok": True, "filename": filename, "size_kb": size_kb})
+
+
+@bp.route("/api/media_port")
+def api_media_port():
+    """Gibt den Port des Medien-Dateiservers zurück."""
+    return jsonify({"port": 5001})
+
+
+# ════════════════════════════════════════════════════════════
+#  ThermoPro TP357
+# ════════════════════════════════════════════════════════════
+
+@bp.route("/thermopro")
+def thermopro_page():
+    devices = thermopro.get_all_from_db()
+    return render_template("thermopro.html", ti=time_info(), devices=devices)
+
+
+@bp.route("/api/thermopro/devices")
+def api_thermopro_devices():
+    """Live-Geräteliste aus Cache (nur aktiv empfangene Geräte)."""
+    live   = {d["mac"]: d for d in thermopro.get_all()}
+    db_dev = thermopro.get_all_from_db()
+    # Merge: DB-Geräte mit Live-Daten anreichern
+    result = []
+    for d in db_dev:
+        if d["mac"] in live:
+            result.append({**d, **live[d["mac"]], "online": True})
+        else:
+            result.append({**d, "online": False})
+    # Neue Geräte die noch nicht in DB waren
+    for mac, d in live.items():
+        if not any(r["mac"] == mac for r in result):
+            result.append({**d, "online": True})
+    return jsonify(result)
+
+
+@bp.route("/api/thermopro/history")
+def api_thermopro_history():
+    """Messverlauf für ein Gerät."""
+    mac   = request.args.get("mac", "")
+    hours = int(request.args.get("hours", 24))
+    if not mac:
+        return jsonify([])
+    return jsonify(thermopro.get_history(mac, hours))
+
+
+@bp.route("/api/thermopro/rename", methods=["POST"])
+def api_thermopro_rename():
+    """Setzt Raum und Anzeigename."""
+    data = request.json or {}
+    mac  = data.get("mac", "")
+    room = data.get("room", "")
+    name = data.get("name", "")
+    if not mac:
+        return jsonify({"ok": False, "error": "mac fehlt"})
+    ok = thermopro.rename_device(mac, room, name)
+    return jsonify({"ok": ok})
+

@@ -80,6 +80,35 @@ def init_db():
         except Exception:
             pass
 
+    # ── ThermoPro: Geräte ────────────────────────────────
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS thermopro_devices (
+            mac         TEXT PRIMARY KEY,
+            name        TEXT DEFAULT '',
+            room        TEXT DEFAULT '',
+            last_seen   TEXT,
+            temperature REAL,
+            humidity    INTEGER,
+            battery     INTEGER
+        )
+    """)
+
+    # ── ThermoPro: Messverlauf ───────────────────────────
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS thermopro_readings (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            mac         TEXT NOT NULL,
+            timestamp   TEXT NOT NULL,
+            temperature REAL,
+            humidity    INTEGER,
+            battery     INTEGER
+        )
+    """)
+    cursor.execute("""
+        CREATE INDEX IF NOT EXISTS idx_tp_readings_mac_ts
+        ON thermopro_readings (mac, timestamp)
+    """)
+
     # ── Einstellungen ────────────────────────────────────
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS settings (

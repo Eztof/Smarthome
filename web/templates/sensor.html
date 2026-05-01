@@ -75,6 +75,13 @@ input:checked+.slider-t:before{transform:translateX(20px);}
       <label style="font-size:14px;font-weight:600;">📷 Kamera aktivieren</label>
       <label class="toggle"><input type="checkbox" id="camToggle" checked><span class="slider-t"></span></label>
     </div>
+    <div id="camSelectWrap" style="display:flex;flex-direction:column;gap:4px;">
+      <label style="font-size:12px;font-weight:600;color:var(--muted);">Kamera auswählen</label>
+      <div style="display:flex;gap:8px;">
+        <button id="btnBack"  onclick="setCam('environment')" style="flex:1;padding:10px;border-radius:8px;border:1px solid var(--accent);background:rgba(79,195,247,.15);color:var(--accent);font-size:13px;font-weight:700;cursor:pointer;">🔙 Rück</button>
+        <button id="btnFront" onclick="setCam('user')"        style="flex:1;padding:10px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--muted);font-size:13px;font-weight:700;cursor:pointer;">🤳 Selfie</button>
+      </div>
+    </div>
     <button class="btn-big btn-start" onclick="startSensor()">▶ Sensor starten</button>
     <div id="setupError" style="color:var(--red);font-size:13px;text-align:center;display:none;"></div>
   </div>
@@ -114,10 +121,30 @@ const CHUNK_MS    = 1000; // Video-Chunk alle 1 Sekunde
 let socket      = null;
 let audioCtx    = null;
 let processor   = null;
-let mainStream  = null;   // kombinierter Audio+Video Stream
+let mainStream  = null;
 let peakDb      = 0;
 let threshold   = 65;
 let useCam      = true;
+let camFacing   = 'environment';  // 'environment' = Rück, 'user' = Selfie
+
+function setCam(facing){
+  camFacing = facing;
+  document.getElementById('btnBack').style.borderColor  = facing==='environment'?'var(--accent)':'var(--border)';
+  document.getElementById('btnBack').style.background   = facing==='environment'?'rgba(79,195,247,.15)':'var(--card)';
+  document.getElementById('btnBack').style.color        = facing==='environment'?'var(--accent)':'var(--muted)';
+  document.getElementById('btnFront').style.borderColor = facing==='user'?'var(--accent)':'var(--border)';
+  document.getElementById('btnFront').style.background  = facing==='user'?'rgba(79,195,247,.15)':'var(--card)';
+  document.getElementById('btnFront').style.color       = facing==='user'?'var(--accent)':'var(--muted)';
+}
+
+// Kamera-Auswahl ein/ausblenden je nach Toggle
+document.addEventListener('DOMContentLoaded',()=>{
+  document.getElementById('camToggle').addEventListener('change', e=>{
+    document.getElementById('camSelectWrap').style.display = e.target.checked ? 'flex' : 'none';
+    document.getElementById('camSelectWrap').style.flexDirection = 'column';
+    document.getElementById('camSelectWrap').style.gap = '4px';
+  });
+});
 
 // ── Video-Ringpuffer ───────────────────────────────────────
 let ringRecorder  = null;   // läuft immer
@@ -158,8 +185,8 @@ async function startSensor(){
   // Audio+Video zusammen anfordern (ein einziger getUserMedia-Aufruf)
   const audioConstraints = {echoCancellation:false,noiseSuppression:false,autoGainControl:false};
   const attempts = useCam ? [
-    {audio:audioConstraints, video:{facingMode:'environment'}},
-    {audio:audioConstraints, video:{facingMode:'user'}},
+    {audio:audioConstraints, video:{facingMode:{exact:camFacing}}},
+    {audio:audioConstraints, video:{facingMode:camFacing}},
     {audio:audioConstraints, video:true},
     {audio:audioConstraints, video:false},
   ] : [{audio:audioConstraints, video:false}];

@@ -18,6 +18,73 @@
   --font:'Syne',sans-serif;--mono:'DM Mono',monospace;
   --sw:220px;--th:56px;--pad:28px;--cp:22px;--fs:15px;
 }
+/* ── Heller Modus ───────────────────────────────────────── */
+body.lm-light{
+  --bg:#f4f6f9;--bg-panel:#ffffff;--bg-card:#ffffff;
+  --border:#e2e6ed;--glow:#c9d0db;
+  --text:#111827;--muted:#6b7280;--dim:#9ca3af;
+  --accent:#0284c7;--abg:rgba(2,132,199,0.08);
+  --green:#15803d;--warm:#b45309;--red:#b91c1c;--purple:#6d28d9;
+}
+/* Sidebar & Topbar */
+body.lm-light .sidebar{
+  background:#ffffff;border-right:1px solid #e2e6ed;
+  box-shadow:2px 0 12px rgba(0,0,0,.05);
+}
+body.lm-light .topbar{
+  background:#ffffff;border-bottom:1px solid #e2e6ed;
+  box-shadow:0 1px 8px rgba(0,0,0,.05);
+}
+body.lm-light .bnav{background:#ffffff;border-top:1px solid #e2e6ed;}
+/* Karten */
+body.lm-light .card{box-shadow:0 1px 4px rgba(0,0,0,.06);}
+body.lm-light .card:hover{box-shadow:0 3px 14px rgba(0,0,0,.10);border-color:var(--glow);}
+/* Buttons */
+body.lm-light .btn{background:#ffffff;color:#374151;}
+body.lm-light .btn:hover{background:#f3f4f6;color:#111827;}
+body.lm-light .ba{background:rgba(2,132,199,.10);color:var(--accent);}
+body.lm-light .ba:hover{background:rgba(2,132,199,.18);}
+body.lm-light .br{background:rgba(185,28,28,.08);color:var(--red);}
+body.lm-light .bg-g{background:rgba(21,128,61,.08);color:var(--green);}
+/* Inputs & Selects */
+body.lm-light input,body.lm-light select{
+  background:#ffffff;border-color:#d1d5db;color:#111827;
+}
+body.lm-light input:focus,body.lm-light select:focus{border-color:var(--accent);}
+body.lm-light input[type=range]{background:#d1d5db;}
+body.lm-light input[type=range]::-webkit-slider-thumb{background:var(--red);}
+/* Scrollbar */
+body.lm-light ::-webkit-scrollbar-thumb{background:#c9d0db;}
+/* Layout-Switcher aktiver Button */
+body.lm-light .lsb.active{background:rgba(2,132,199,.12);color:var(--accent);}
+body.lm-light .lsb:hover:not(.active){background:#f3f4f6;}
+/* Nav-Links */
+body.lm-light .nav:hover{background:#f3f4f6;color:#111827;border-color:#d1d5db;}
+body.lm-light .nav.active{background:rgba(2,132,199,.10);color:var(--accent);border-color:rgba(2,132,199,.25);}
+body.lm-light .bni.active{color:var(--accent);}
+/* Logo */
+body.lm-light .logo span{color:var(--accent);}
+body.lm-light .dot{background:var(--green);box-shadow:0 0 5px var(--green);}
+/* Heldenkarten (Wetter, Hunde-Meter) – dunkle Gradienten aufhellen */
+body.lm-light .hero{background:linear-gradient(135deg,#e8f4fd,#dbeafe);border-color:#bfdbfe;}
+body.lm-light .wh-main{background:linear-gradient(135deg,#e8f4fd,#dbeafe);border-color:#bfdbfe;}
+body.lm-light .meter{background:linear-gradient(135deg,#f0f7ff,#e8f4fd);border-color:#bfdbfe;}
+/* Badge & Pill */
+body.lm-light .pill.on{background:rgba(21,128,61,.12);color:var(--green);border-color:rgba(21,128,61,.3);}
+body.lm-light .pill.off{background:#f3f4f6;color:var(--muted);border-color:#d1d5db;}
+/* Tabellen */
+body.lm-light .log-t th,body.lm-light .data-table th{color:#6b7280;border-bottom-color:#e2e6ed;}
+body.lm-light .log-t td,body.lm-light .data-table td{border-bottom-color:#f3f4f6;color:#374151;}
+body.lm-light .log-t tr:hover td,body.lm-light .data-table tr:hover td{background:#f9fafb;}
+/* Stündliche Wetter-Kacheln */
+body.lm-light .hc{background:#ffffff;border-color:#e2e6ed;}
+body.lm-light .hc.now{background:rgba(2,132,199,.08);border-color:rgba(2,132,199,.35);}
+/* Tagesprognose-Zeilen */
+body.lm-light .fdr:hover{background:rgba(0,0,0,.02);}
+body.lm-light .fdr.today{background:rgba(2,132,199,.06);}
+/* Status-Dot im Footer */
+body.lm-light .sf{border-top-color:#e2e6ed;}
+
 html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--font);font-size:var(--fs);line-height:1.5;}
 ::-webkit-scrollbar{width:4px;height:4px;}
 ::-webkit-scrollbar-thumb{background:var(--glow);border-radius:2px;}
@@ -100,8 +167,9 @@ select{width:100%;padding:9px 12px;background:var(--bg);border:1px solid var(--b
   <span class="nl">Übersicht</span>
   <a href="/"        class="nav {% if request.path=='/' %}active{% endif %}"><span class="ic">⌂</span><span class="lt">Dashboard</span></a>
   <span class="nl">Module</span>
-  <a href="/weather" class="nav {% if request.path=='/weather' %}active{% endif %}"><span class="ic">🌤</span><span class="lt">Wetter</span></a>
-  <a href="/hunde"   class="nav {% if request.path=='/hunde' %}active{% endif %}"><span class="ic">🐕</span><span class="lt">Hunde</span></a>
+  <a href="/weather"    class="nav {% if request.path=='/weather' %}active{% endif %}"><span class="ic">🌤</span><span class="lt">Wetter</span></a>
+  <a href="/thermopro" class="nav {% if request.path=='/thermopro' %}active{% endif %}"><span class="ic">🌡</span><span class="lt">Thermometer</span></a>
+  <a href="/hunde"     class="nav {% if request.path=='/hunde' %}active{% endif %}"><span class="ic">🐕</span><span class="lt">Hunde</span></a>
   <a href="/media"   class="nav {% if request.path=='/media' %}active{% endif %}"><span class="ic">🎬</span><span class="lt">Mediaserver</span></a>
   <a href="/appdb"   class="nav {% if request.path=='/appdb' %}active{% endif %}"><span class="ic">🗄</span><span class="lt">AppDatabase</span></a>
   <div class="sf"><div class="sn">Windows Smarthome</div><div><span class="dot"></span> Online</div></div>
@@ -114,25 +182,43 @@ select{width:100%;padding:9px 12px;background:var(--bg);border:1px solid var(--b
       <button class="lsb" data-lm="tablet">📺<span class="ll"> Tablet</span></button>
       <button class="lsb" data-lm="mobile">📱<span class="ll"> Mobil</span></button>
     </div>
+    <button id="themeToggle" onclick="toggleTheme()" style="padding:5px 10px;border-radius:var(--rs);border:1px solid var(--border);background:var(--bg-card);color:var(--muted);font-size:16px;cursor:pointer;transition:all .15s;">🌙</button>
     <div class="tp-meta">{% if ti %}{{ ti.weekday }}, {{ ti.day }}. {{ ti.month }}<br><strong>{{ ti.time }} Uhr</strong>{% endif %}</div>
   </div>
 </header>
 <main class="main">{% block content %}{% endblock %}</main>
 </div>
 <nav class="bnav">
-  <a href="/"        class="bni {% if request.path=='/' %}active{% endif %}"><span class="bic">⌂</span>Home</a>
-  <a href="/weather" class="bni {% if request.path=='/weather' %}active{% endif %}"><span class="bic">🌤</span>Wetter</a>
-  <a href="/hunde"   class="bni {% if request.path=='/hunde' %}active{% endif %}"><span class="bic">🐕</span>Hunde</a>
+  <a href="/"          class="bni {% if request.path=='/' %}active{% endif %}"><span class="bic">⌂</span>Home</a>
+  <a href="/weather"   class="bni {% if request.path=='/weather' %}active{% endif %}"><span class="bic">🌤</span>Wetter</a>
+  <a href="/thermopro" class="bni {% if request.path=='/thermopro' %}active{% endif %}"><span class="bic">🌡</span>Temp</a>
+  <a href="/hunde"     class="bni {% if request.path=='/hunde' %}active{% endif %}"><span class="bic">🐕</span>Hunde</a>
   <a href="/media"   class="bni {% if request.path=='/media' %}active{% endif %}"><span class="bic">🎬</span>Media</a>
   <a href="/appdb"   class="bni {% if request.path=='/appdb' %}active{% endif %}"><span class="bic">🗄</span>DB</a>
 </nav>
 <script>
+let _lightMode = localStorage.getItem('pihome_theme')==='light';
+
 function applyLayout(m){
   if(!['desktop','tablet','mobile'].includes(m))m='desktop';
-  document.body.className='lm-'+m;
+  const classes=['lm-'+m];
+  if(_lightMode) classes.push('lm-light');
+  document.body.className=classes.join(' ');
   localStorage.setItem('pihome_layout',m);
   document.querySelectorAll('.lsb').forEach(b=>b.classList.toggle('active',b.dataset.lm===m));
 }
+
+function toggleTheme(){
+  _lightMode=!_lightMode;
+  localStorage.setItem('pihome_theme',_lightMode?'light':'dark');
+  const btn=document.getElementById('themeToggle');
+  btn.textContent=_lightMode?'☀️':'🌙';
+  const m=localStorage.getItem('pihome_layout')||'desktop';
+  applyLayout(m);
+}
+
+// Init
+if(_lightMode){document.getElementById('themeToggle').textContent='☀️';}
 applyLayout(localStorage.getItem('pihome_layout')||'desktop');
 document.querySelectorAll('.lsb').forEach(b=>b.addEventListener('click',()=>applyLayout(b.dataset.lm)));
 </script>

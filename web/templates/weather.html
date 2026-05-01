@@ -63,6 +63,32 @@ body.lm-mobile .fdr-r{display:none;}
 {% endblock %}
 {% block content %}
 
+<!-- ── Tages-Navigation ─────────────────────────────────── -->
+<div style="display:flex;align-items:center;justify-content:center;gap:16px;margin-bottom:16px;" class="fu">
+  {% if prev_date >= min_date %}
+  <a href="/weather?date={{ prev_date }}" class="btn" style="font-size:18px;padding:8px 16px;">←</a>
+  {% else %}
+  <button class="btn" disabled style="font-size:18px;padding:8px 16px;opacity:.3;">←</button>
+  {% endif %}
+
+  <div style="text-align:center;">
+    <div style="font-size:17px;font-weight:700;">
+      {% if is_today %}Heute{% else %}{{ sel_weekday }}{% endif %}
+    </div>
+    <div style="font-size:13px;color:var(--muted);font-family:var(--mono);">{{ sel_datefmt }}</div>
+  </div>
+
+  {% if next_date <= max_date %}
+  <a href="/weather?date={{ next_date }}" class="btn" style="font-size:18px;padding:8px 16px;">→</a>
+  {% else %}
+  <button class="btn" disabled style="font-size:18px;padding:8px 16px;opacity:.3;">→</button>
+  {% endif %}
+
+  {% if not is_today %}
+  <a href="/weather" class="btn ba" style="font-size:12px;">Heute</a>
+  {% endif %}
+</div>
+
 {% if current %}
 <div class="w-hero fu">
   <div class="wh-main">
@@ -77,12 +103,15 @@ body.lm-mobile .fdr-r{display:none;}
     </div>
   </div>
   <div class="wh-sun">
-    <div class="ct">Sonnenverlauf heute</div>
-    {% if forecast %}{% set tf=forecast|selectattr("is_today")|first %}{% if tf %}
-    <div class="sun-r"><div class="sun-ic">🌅</div><div><div class="sun-lb">Sonnenaufgang</div><div class="sun-t">{{ tf.sunrise[11:16] if tf.sunrise else '—' }}</div></div></div>
-    <div class="sun-r"><div class="sun-ic">🌇</div><div><div class="sun-lb">Sonnenuntergang</div><div class="sun-t">{{ tf.sunset[11:16] if tf.sunset else '—' }}</div></div></div>
-    {% endif %}{% endif %}
+    <div class="ct">Sonnenverlauf</div>
+    {% set sun_src = day_entry if day_entry else (forecast|selectattr("is_today")|first if forecast else none) %}
+    {% if sun_src %}
+    <div class="sun-r"><div class="sun-ic">🌅</div><div><div class="sun-lb">Sonnenaufgang</div><div class="sun-t">{{ sun_src.sunrise[11:16] if sun_src.sunrise else '—' }}</div></div></div>
+    <div class="sun-r"><div class="sun-ic">🌇</div><div><div class="sun-lb">Sonnenuntergang</div><div class="sun-t">{{ sun_src.sunset[11:16] if sun_src.sunset else '—' }}</div></div></div>
+    {% endif %}
+    {% if is_today %}
     <button class="btn ba" style="width:100%;justify-content:center;margin-top:16px;" onclick="refreshW(this)">↻ Aktualisieren</button>
+    {% endif %}
   </div>
 </div>
 {% endif %}
@@ -160,9 +189,12 @@ if(HD&&HD.length){
   const cv=document.getElementById('tempChart');
   const cx=cv.getContext('2d');
   const rg=cx.createLinearGradient(0,0,0,240);
-  rg.addColorStop(0,'rgba(124,131,255,.28)');rg.addColorStop(1,'rgba(124,131,255,0)');
+  rg.addColorStop(0,'rgba(124,131,255,{{ rain_top }})');
+  rg.addColorStop(1,'rgba(124,131,255,{{ rain_btm }})');
   let bg=null,fg=null;
+  const IS_TODAY={{ 'true' if is_today else 'false' }};
   const tlp={id:'tl',afterDraw(c){
+    if(!IS_TODAY)return;  // Roter Strich nur heute
     const{ctx,chartArea}=c;
     const f=(NWH*60+NWM)/(24*60);
     const x=chartArea.left+f*(chartArea.right-chartArea.left);
@@ -176,8 +208,8 @@ if(HD&&HD.length){
   }};
   new Chart(cx,{
     data:{labels:lb,datasets:[
-      {type:'line',label:'Temperatur',data:tp,yAxisID:'yT',borderColor:()=>bg||'#4fc3f7',backgroundColor:()=>fg||'rgba(79,195,247,.2)',borderWidth:2.5,pointRadius:3,pointHoverRadius:7,pointBackgroundColor:sc2.map(s=>sc(s,1)),pointBorderColor:'transparent',tension:.4,fill:true},
-      {type:'bar',label:'Regen',data:rn,yAxisID:'yR',backgroundColor:rg,borderColor:'rgba(124,131,255,.4)',borderWidth:1,borderRadius:3}
+      {type:'line',label:'Temperatur',data:tp,yAxisID:'yT',borderColor:()=>bg||'#4fc3f7',backgroundColor:()=>fg||'rgba(79,195,247,{{ temp_fill }})',borderWidth:2.5,pointRadius:3,pointHoverRadius:7,pointBackgroundColor:sc2.map(s=>sc(s,1)),pointBorderColor:'transparent',tension:.4,fill:true},
+      {type:'bar',label:'Regen',data:rn,yAxisID:'yR',backgroundColor:rg,borderColor:'rgba(124,131,255,{{ rain_brd }})',borderWidth:1,borderRadius:3}
     ]},
     options:{
       responsive:true,maintainAspectRatio:false,

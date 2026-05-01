@@ -4,7 +4,7 @@
 {% block head %}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
-/* ── Sensor-Karten ─────────────────────────────────── */
+/* ── Sensor-Karten ─────────────────────────── */
 .sensor-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;margin-bottom:14px;}
 .sensor-card{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--r);padding:18px;position:relative;transition:border-color .2s;}
 .sensor-card.active{border-color:rgba(105,219,124,.4);}
@@ -18,104 +18,99 @@
 .sc-fill{height:100%;border-radius:4px;transition:width .15s,background .3s;}
 .sc-mark{position:absolute;top:0;bottom:0;width:2px;background:rgba(255,80,80,.7);}
 .sc-meta{display:flex;justify-content:space-between;font-family:var(--mono);font-size:11px;color:var(--dim);margin-top:6px;}
-.sc-since{font-size:10px;color:var(--dim);font-family:var(--mono);}
 .sc-cam{font-size:11px;margin-top:8px;padding-top:8px;border-top:1px solid var(--border);color:var(--muted);}
-
 .no-sensors{background:var(--bg-card);border:2px dashed var(--border);border-radius:var(--r);padding:40px;text-align:center;color:var(--dim);margin-bottom:14px;}
-.no-sensors .ns-icon{font-size:40px;margin-bottom:12px;}
-.no-sensors .ns-url{font-family:var(--mono);font-size:13px;color:var(--accent);margin-top:8px;word-break:break-all;}
+.no-sensors .ns-url{font-family:var(--mono);font-size:13px;color:var(--accent);margin-top:8px;}
 
-/* ── Stats ─────────────────────────────────────────── */
-.st-row{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px;}
-.st-c{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--r);padding:14px;text-align:center;}
-.st-v{font-family:var(--mono);font-size:26px;font-weight:300;line-height:1;margin:6px 0 3px;}
+/* ── Stat-Karten ───────────────────────────── */
+.st-row{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:14px;}
+.st-c{border-radius:var(--r);padding:18px;text-align:center;position:relative;overflow:hidden;}
+.st-c::before{content:'';position:absolute;inset:0;opacity:.08;border-radius:var(--r);}
+.st-c.c-blue{background:rgba(79,195,247,.08);border:1px solid rgba(79,195,247,.25);}
+.st-c.c-warm{background:rgba(255,179,71,.08);border:1px solid rgba(255,179,71,.25);}
+.st-c.c-red{background:rgba(255,107,107,.08);border:1px solid rgba(255,107,107,.25);}
+.st-v{font-family:var(--mono);font-size:32px;font-weight:300;line-height:1;margin:6px 0 4px;}
+.st-c.c-blue .st-v{color:#4fc3f7;}
+.st-c.c-warm .st-v{color:#ffb347;}
+.st-c.c-red  .st-v{color:#ff6b6b;}
 .st-l{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--dim);}
 
-/* ── Log ───────────────────────────────────────────── */
-.log-t{width:100%;border-collapse:collapse;}
-.log-t th{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);padding:8px 12px;text-align:left;border-bottom:1px solid var(--border);}
-.log-t td{padding:10px 12px;border-bottom:1px solid var(--border);font-family:var(--mono);font-size:13px;}
-.log-t tr:last-child td{border-bottom:none;}
-.log-t tr:hover td{background:rgba(255,255,255,.02);}
-.db-b{display:inline-block;padding:2px 8px;border-radius:4px;font-size:12px;font-weight:700;}
+/* ── Charts ────────────────────────────────── */
+.chart-wrap{position:relative;height:160px;}
 
-/* ── Aufnahmen ─────────────────────────────────────── */
-.chart-wrap{position:relative;height:180px;}
-.rec-list{display:flex;flex-direction:column;gap:6px;max-height:400px;overflow-y:auto;}
-.rec-item{display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--bg);border:1px solid var(--border);border-radius:var(--rs);}
-.rec-item:hover{border-color:var(--glow);}
-.rec-info{flex:1;min-width:0;}
-.rec-ts{font-family:var(--mono);font-size:12px;color:var(--text);}
-.rec-meta{font-family:var(--mono);font-size:11px;color:var(--dim);}
-audio,video{height:36px;flex-shrink:0;max-width:220px;}
-video{height:60px;width:auto;border-radius:4px;}
+/* ── Ereignis-Timeline ─────────────────────── */
+.event-feed{display:flex;flex-direction:column;gap:10px;}
+.event-card{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;transition:border-color .2s;}
+.event-card:hover{border-color:var(--glow);}
+.event-header{display:flex;align-items:center;gap:12px;padding:14px 18px;}
+.ev-db-bar{width:6px;flex-shrink:0;border-radius:3px;align-self:stretch;min-height:48px;}
+.ev-info{flex:1;min-width:0;}
+.ev-time{font-family:var(--mono);font-size:13px;color:var(--text);font-weight:600;}
+.ev-sub{font-size:12px;color:var(--muted);margin-top:2px;}
+.ev-badge{font-family:var(--mono);font-size:18px;font-weight:700;padding:6px 14px;border-radius:8px;flex-shrink:0;text-align:center;line-height:1.2;}
+.ev-badge small{display:block;font-size:10px;font-weight:400;letter-spacing:.06em;text-transform:uppercase;opacity:.7;}
+.ev-dur{font-size:11px;color:var(--dim);font-family:var(--mono);}
+.event-media{padding:0 18px 14px;}
+.event-media video{width:100%;max-height:220px;border-radius:8px;background:#000;display:block;}
+.event-media audio{width:100%;height:36px;margin-top:4px;}
+.ev-actions{display:flex;gap:8px;margin-top:10px;}
+.empty-feed{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--r);padding:40px;text-align:center;color:var(--dim);}
+
+/* ── Loading Skeleton ──────────────────────── */
+.skel{background:linear-gradient(90deg,var(--border) 25%,var(--glow) 50%,var(--border) 75%);background-size:200% 100%;animation:shimmer 1.4s infinite;border-radius:6px;}
+@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
 </style>
 {% endblock %}
 
 {% block content %}
 
-<!-- ── Verbundene Sensoren ─────────────────────────── -->
+<!-- ── Verbundene Sensoren ───────────────────── -->
 <div class="sh fu">
   <h2>Verbundene Sensoren <span id="sensorCount" style="color:var(--dim);font-family:var(--mono);font-size:11px;">(0)</span></h2>
   <a href="/sensor" target="_blank" class="btn ba" style="font-size:12px;">📱 Sensor hinzufügen</a>
 </div>
-
 <div id="sensorGrid" class="sensor-grid fu d1">
   <div class="no-sensors">
-    <div class="ns-icon">📱</div>
-    <div style="font-size:14px;font-weight:600;">Kein Sensor verbunden</div>
-    <div style="font-size:13px;margin-top:6px;">Öffne auf einem Handy im selben WLAN:</div>
+    <div style="font-size:36px;margin-bottom:12px;">📱</div>
+    <div style="font-size:14px;font-weight:600;margin-bottom:6px;">Kein Sensor verbunden</div>
     <div class="ns-url">http://192.168.178.104:5000/sensor</div>
   </div>
 </div>
 
-<!-- ── Statistiken heute ───────────────────────────── -->
+<!-- ── Statistiken ───────────────────────────── -->
 <div class="st-row fu d2">
-  <div class="st-c"><div class="st-l">Heute</div><div class="st-v" id="stTotal">{{ stats.total or 0 }}</div><div style="font-size:11px;color:var(--muted);">Ereignisse</div></div>
-  <div class="st-c"><div class="st-l">Lautester Wert</div><div class="st-v" id="stMax">{{ '%.1f'|format(stats.max_db) if stats.max_db else '—' }}</div><div style="font-size:11px;color:var(--muted);">dB</div></div>
-  <div class="st-c"><div class="st-l">Durchschnitt</div><div class="st-v" id="stAvg">{{ '%.1f'|format(stats.avg_db) if stats.avg_db else '—' }}</div><div style="font-size:11px;color:var(--muted);">dB</div></div>
+  <div class="st-c c-blue">
+    <div class="st-l">Heute</div>
+    <div class="st-v" id="stTotal">{{ stats.total or 0 }}</div>
+    <div style="font-size:11px;color:var(--muted);">Ereignisse</div>
+  </div>
+  <div class="st-c c-warm">
+    <div class="st-l">Lautester Wert</div>
+    <div class="st-v" id="stMax">{{ '%.0f'|format(stats.max_db) if stats.max_db else '—' }}</div>
+    <div style="font-size:11px;color:var(--muted);">dB</div>
+  </div>
+  <div class="st-c c-red">
+    <div class="st-l">Ø Durchschnitt</div>
+    <div class="st-v" id="stAvg">{{ '%.0f'|format(stats.avg_db) if stats.avg_db else '—' }}</div>
+    <div style="font-size:11px;color:var(--muted);">dB</div>
+  </div>
 </div>
 
-<!-- ── Charts ──────────────────────────────────────── -->
-<div class="g2 fu d3" style="margin-bottom:14px;">
-  <div class="card"><div class="ct">Ereignisse heute (stündlich)</div><div class="chart-wrap"><canvas id="hChart"></canvas></div></div>
+<!-- ── Charts ────────────────────────────────── -->
+<div class="g2 fu d2" style="margin-bottom:14px;">
+  <div class="card"><div class="ct">Heute (stündlich)</div><div class="chart-wrap"><canvas id="hChart"></canvas></div></div>
   <div class="card"><div class="ct">Letzte 7 Tage</div><div class="chart-wrap"><canvas id="dChart"></canvas></div></div>
 </div>
 
-<!-- ── Ereignis-Log ────────────────────────────────── -->
-<div class="card fu d3" style="margin-bottom:14px;">
-  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
-    <div class="ct" style="margin:0;">Ereignis-Log</div>
-    <button class="btn br" onclick="clearLog()" style="font-size:12px;">🗑 Alles löschen</button>
-  </div>
-  <div style="max-height:380px;overflow-y:auto;">
-    <table class="log-t">
-      <thead><tr><th>Zeitpunkt</th><th>Sensor</th><th>Raum</th><th>Pegel</th><th>Dauer</th></tr></thead>
-      <tbody id="logBody">
-        {% for e in events %}
-        <tr>
-          <td>{{ e.timestamp }}</td>
-          <td style="color:var(--muted);">{{ e.sensor_name or '—' }}</td>
-          <td style="color:var(--muted);">{{ e.sensor_room or '—' }}</td>
-          <td><span class="db-b" style="{{ db_badge_style(e.db_level) }}">{{ e.db_level }} dB</span></td>
-          <td style="color:var(--dim);">{{ '%.1f'|format(e.duration_s) }}s</td>
-        </tr>
-        {% else %}
-        <tr id="emptyRow"><td colspan="5" style="text-align:center;color:var(--dim);padding:24px;">Noch keine Ereignisse.</td></tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
+<!-- ── Ereignis-Timeline ─────────────────────── -->
+<div class="sh fu d3">
+  <h2>Ereignisse &amp; Aufnahmen</h2>
+  <button class="btn br" onclick="clearAll()" style="font-size:12px;">🗑 Alles löschen</button>
 </div>
-
-<!-- ── Aufnahmen ───────────────────────────────────── -->
-<div class="card fu d4">
-  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
-    <div class="ct" style="margin:0;">Aufnahmen <span style="font-family:var(--mono);font-size:11px;color:var(--dim);">(Audio + Video)</span></div>
-    <a href="/hunde/aufnahmen" class="btn" style="font-size:12px;">Alle →</a>
-  </div>
-  <div class="rec-list" id="recList">
-    <div id="recEmpty" style="color:var(--dim);font-size:13px;padding:16px;text-align:center;">Noch keine Aufnahmen.</div>
+<div id="eventFeed" class="event-feed fu d3">
+  <div class="empty-feed">
+    <div style="font-size:32px;margin-bottom:10px;">🔇</div>
+    <div>Noch keine Ereignisse aufgezeichnet.</div>
   </div>
 </div>
 
@@ -123,63 +118,220 @@ video{height:60px;width:auto;border-radius:4px;}
 
 {% block scripts %}
 <script>
+const MEDIA = `http://${window.location.hostname}:5001`;
+
 // ── Charts ─────────────────────────────────────────────────
 const hData={{ hourly|tojson }};
 const dData={{ daily|tojson }};
-
-function mkChart(id,labels,values,color,label){
+function mkChart(id,labels,vals,color){
   const cv=document.getElementById(id);if(!cv)return;
   const cx=cv.getContext('2d');
-  const g=cx.createLinearGradient(0,0,0,180);
-  g.addColorStop(0,color.replace(')',', 0.3)').replace('rgb','rgba'));
-  g.addColorStop(1,color.replace(')',', 0)').replace('rgb','rgba'));
-  new Chart(cx,{type:'bar',data:{labels,datasets:[{label,data:values,backgroundColor:g,borderColor:color,borderWidth:1.5,borderRadius:4}]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{backgroundColor:'#161c28',borderColor:'#2a3550',borderWidth:1,bodyColor:'#e8edf5',padding:10}},
-      scales:{x:{grid:{color:'#1e2535'},ticks:{color:'#5a6480',font:{family:'DM Mono',size:10}}},y:{grid:{color:'#1e2535'},ticks:{color:'#5a6480',font:{family:'DM Mono',size:10},stepSize:1},min:0}}}});
+  const g=cx.createLinearGradient(0,0,0,160);
+  g.addColorStop(0,color.replace('1)','0.3)'));g.addColorStop(1,color.replace('1)','0)'));
+  new Chart(cx,{type:'bar',data:{labels,datasets:[{data:vals,backgroundColor:g,borderColor:color,borderWidth:1.5,borderRadius:5}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},
+      tooltip:{backgroundColor:'#161c28',borderColor:'#2a3550',borderWidth:1,bodyColor:'#e8edf5',padding:10}},
+      scales:{x:{grid:{color:'#1e2535'},ticks:{color:'#5a6480',font:{family:'DM Mono',size:10}}},
+              y:{grid:{color:'#1e2535'},ticks:{color:'#5a6480',font:{family:'DM Mono',size:10},stepSize:1},min:0}}}});
 }
-
 if(hData.length){
   const all=Array.from({length:24},(_,i)=>String(i).padStart(2,'0'));
   const map=Object.fromEntries(hData.map(d=>[d.hour,d.count]));
-  mkChart('hChart',all.map(h=>h+':00'),all.map(h=>map[h]||0),'rgb(79,195,247)','Ereignisse');
-}else mkChart('hChart',['Heute'],[0],'rgb(79,195,247)','Ereignisse');
-
+  mkChart('hChart',all.map(h=>h+':00'),all.map(h=>map[h]||0),'rgba(79,195,247,1)');
+}else mkChart('hChart',['—'],[0],'rgba(79,195,247,1)');
 if(dData.length){
   const days=['Mo','Di','Mi','Do','Fr','Sa','So'];
-  const lbs=dData.map(d=>{try{const dt=new Date(d.day);return days[dt.getDay()]+' '+d.day.slice(8)+'.';}catch(e){return d.day;}});
-  mkChart('dChart',lbs,dData.map(d=>d.count),'rgb(124,131,255)','Ereignisse');
+  mkChart('dChart',dData.map(d=>{try{return days[new Date(d.day).getDay()]+' '+d.day.slice(8)+'.';}catch{return d.day;}}),
+          dData.map(d=>d.count),'rgba(124,131,255,1)');
 }
 
-// ── Farbe je dB ────────────────────────────────────────────
-function dbCol(db){
+// ── dB Farbe ───────────────────────────────────────────────
+function dbColor(db){
+  if(db<40)return{bg:'#4fc3f7',dim:'rgba(79,195,247,.15)',text:'#4fc3f7'};
+  if(db<55)return{bg:'#69db7c',dim:'rgba(105,219,124,.15)',text:'#69db7c'};
+  if(db<70)return{bg:'#ffb347',dim:'rgba(255,179,71,.15)',text:'#ffb347'};
+  if(db<80)return{bg:'#ff6b00',dim:'rgba(230,74,25,.15)',text:'#ff6b00'};
+  return{bg:'#ff3b3b',dim:'rgba(255,59,59,.15)',text:'#ff3b3b'};
+}
+function dbColSensor(db){
   if(db<40)return'#4fc3f7';if(db<55)return'#43a047';
   if(db<70)return'#f9a825';if(db<80)return'#e64a19';return'#ff3b3b';
 }
 
-// ── WebSocket: Sensor-Updates ──────────────────────────────
-function initSocket(){
-  const sock=io(window.location.origin,{transports:['websocket']});
-  sock.on('sensors_update', renderSensors);
-  sock.on('sensor_db_update', d=>{ if(d.db) renderSensors(d.db); });
-  // Initiale Sensor-Liste laden
-  fetch('/api/sensors').then(r=>r.json()).then(renderSensors).catch(()=>{});
+// ── Timestamp aus Dateinamen ────────────────────────────────
+function tsFromFilename(fn){
+  const m=fn.match(/(\d{4}-\d{2}-\d{2})_(\d{2}-\d{2}-\d{2})/);
+  if(!m)return 0;
+  return new Date(m[1]+'T'+m[2].replace(/-/g,':')).getTime();
 }
 
+// ── Ereignis-Feed rendern ──────────────────────────────────
+let feedEvents=[], feedRecs=[];
+
+function renderFeed(){
+  const feed=document.getElementById('eventFeed');
+
+  if(!feedEvents.length&&!feedRecs.length){
+    feed.innerHTML='<div class="empty-feed"><div style="font-size:32px;margin-bottom:10px;">🔇</div><div>Noch keine Ereignisse aufgezeichnet.</div></div>';
+    return;
+  }
+
+  // Recordings deduplizieren: Audio weglassen wenn Video nahe genug vorhanden
+  const videos=feedRecs.filter(r=>r.filename.endsWith('.webm')||r.filename.endsWith('.mp4'));
+  const audios=feedRecs.filter(r=>r.filename.endsWith('.wav'));
+  const filteredAudio=audios.filter(a=>{
+    const at=tsFromFilename(a.filename);
+    return !videos.some(v=>Math.abs(tsFromFilename(v.filename)-at)<90000); // 90s Toleranz
+  });
+  const allRecs=[...videos,...filteredAudio].sort((a,b)=>b.filename.localeCompare(a.filename));
+
+  // Events und Recordings zusammenführen (nach Zeitstempel paaren)
+  const items=[];
+
+  // Für jedes Ereignis die passende Aufnahme suchen
+  feedEvents.forEach(ev=>{
+    const evTime=new Date(ev.timestamp).getTime();
+    let rec=allRecs.find(r=>Math.abs(tsFromFilename(r.filename)-evTime)<120000);
+    items.push({type:'event',ev,rec});
+    // Verwendete Aufnahme aus Pool entfernen
+    if(rec){
+      const idx=allRecs.indexOf(rec);
+      if(idx>-1)allRecs.splice(idx,1);
+    }
+  });
+
+  // Übrige Aufnahmen ohne zugehöriges Ereignis ebenfalls anzeigen
+  allRecs.forEach(rec=>items.push({type:'rec',rec}));
+
+  // Nach Zeit sortieren (neueste zuerst)
+  items.sort((a,b)=>{
+    const ta=a.ev?new Date(a.ev.timestamp).getTime():tsFromFilename(a.rec?.filename||'');
+    const tb=b.ev?new Date(b.ev.timestamp).getTime():tsFromFilename(b.rec?.filename||'');
+    return tb-ta;
+  });
+
+  feed.innerHTML=items.slice(0,30).map(item=>renderCard(item)).join('');
+}
+
+function renderCard({type,ev,rec}){
+  const db=ev?ev.db_level:0;
+  const col=dbColor(db);
+  const isVideo=rec&&(rec.filename.endsWith('.webm')||rec.filename.endsWith('.mp4'));
+  const mediaUrl=rec?`${MEDIA}/${encodeURIComponent(rec.filename)}`:'';
+
+  const time=ev?ev.timestamp:(rec?rec.filename.slice(0,19).replace(/_/g,' ').replace(/-/g,x=>x==='-'&&time?.includes(x)?':':'-'):'');
+  const evTime=ev?ev.timestamp.replace('T',' ').slice(0,19):(rec?rec.filename.slice(0,10)+' '+rec.filename.slice(11,19).replace(/-/g,':'):'');
+  const sensor=ev?(ev.sensor_name||''):'';
+  const room=ev?(ev.sensor_room||''):'';
+  const dur=ev?`${parseFloat(ev.duration_s).toFixed(1)}s`:'';
+
+  const badgeStyle=`background:${col.dim};color:${col.text};`;
+  const barColor=col.bg;
+
+  let mediaHtml='';
+  if(rec){
+    if(isVideo){
+      mediaHtml=`<div class="event-media">
+        <video controls preload="metadata" src="${mediaUrl}" style="width:100%;max-height:200px;border-radius:8px;background:#000;display:block;"></video>
+        <div class="ev-actions">
+          <a href="${mediaUrl}" download="${rec.filename}" class="btn" style="font-size:12px;">⬇ Download</a>
+          <button class="btn br" style="font-size:12px;" onclick="delRec('${rec.filename}',this)">🗑 Löschen</button>
+        </div>
+      </div>`;
+    }else{
+      mediaHtml=`<div class="event-media">
+        <audio controls preload="metadata" src="${mediaUrl}" style="width:100%;height:36px;"></audio>
+        <div class="ev-actions">
+          <a href="${mediaUrl}" download="${rec.filename}" class="btn" style="font-size:12px;">⬇ Download</a>
+          <button class="btn br" style="font-size:12px;" onclick="delRec('${rec.filename}',this)">🗑 Löschen</button>
+        </div>
+      </div>`;
+    }
+  }
+
+  return `<div class="event-card" id="ec-${ev?ev.id:(rec?.filename||'').replace(/\W/g,'_')}">
+    <div class="event-header">
+      <div class="ev-db-bar" style="background:${barColor};"></div>
+      <div class="ev-info">
+        <div class="ev-time">${evTime}</div>
+        <div class="ev-sub">${[sensor,room].filter(Boolean).join(' · ')||'Unbekannt'}</div>
+        ${dur?`<div class="ev-dur">${dur} Dauer</div>`:''}
+      </div>
+      ${ev?`<div class="ev-badge" style="${badgeStyle}">
+        ${db.toFixed(1)}
+        <small>dB</small>
+      </div>`:'<div class="ev-badge" style="background:var(--border);color:var(--dim);">📁<small>Datei</small></div>'}
+    </div>
+    ${mediaHtml}
+  </div>`;
+}
+
+// ── Daten laden ────────────────────────────────────────────
+async function loadData(){
+  try{
+    const [evRes,recRes]=await Promise.all([
+      fetch('/api/hunde/events'),
+      fetch('/api/sensors/recordings')
+    ]);
+    const newEv=await evRes.json();
+    const newRec=await recRes.json();
+
+    const changed=JSON.stringify(newEv)!==JSON.stringify(feedEvents)||
+                  JSON.stringify(newRec)!==JSON.stringify(feedRecs);
+    if(changed){
+      feedEvents=newEv;
+      feedRecs=newRec;
+      renderFeed();
+      updateStats();
+    }
+  }catch(e){}
+}
+
+async function updateStats(){
+  try{
+    const r=await fetch('/api/hunde/charts');
+    const d=await r.json();
+    if(d.stats){
+      document.getElementById('stTotal').textContent=d.stats.total||0;
+      document.getElementById('stMax').textContent=d.stats.max_db?parseFloat(d.stats.max_db).toFixed(0):'—';
+      document.getElementById('stAvg').textContent=d.stats.avg_db?parseFloat(d.stats.avg_db).toFixed(0):'—';
+    }
+  }catch(e){}
+}
+
+async function clearAll(){
+  if(!confirm('Alle Ereignisse löschen?'))return;
+  await fetch('/api/hunde/clear',{method:'POST'});
+  feedEvents=[];
+  renderFeed();
+  ['stTotal','stMax','stAvg'].forEach(id=>document.getElementById(id).textContent='—');
+}
+
+async function delRec(fn,btn){
+  if(!confirm('Aufnahme löschen?'))return;
+  btn.disabled=true;
+  await fetch('/api/sensors/recordings/delete',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({filename:fn})});
+  const card=btn.closest('.event-card');
+  if(card){card.style.opacity='0';card.style.transition='opacity .3s';setTimeout(()=>card.remove(),300);}
+}
+
+// ── Sensor-Grid ────────────────────────────────────────────
+function initSocket(){
+  const sock=io(window.location.origin,{transports:['websocket']});
+  sock.on('sensors_update',renderSensors);
+  sock.on('sensor_db_update',d=>{if(d.db)renderSensors(d.db);});
+  fetch('/api/sensors').then(r=>r.json()).then(renderSensors).catch(()=>{});
+}
 function renderSensors(list){
   const grid=document.getElementById('sensorGrid');
   const count=document.getElementById('sensorCount');
   count.textContent='('+list.length+')';
   if(!list.length){
-    grid.innerHTML=`<div class="no-sensors">
-      <div class="ns-icon">📱</div>
-      <div style="font-size:14px;font-weight:600;">Kein Sensor verbunden</div>
-      <div style="font-size:13px;margin-top:6px;">Öffne auf einem Handy im selben WLAN:</div>
-      <div class="ns-url">http://192.168.178.104:5000/sensor</div>
-    </div>`;
+    grid.innerHTML=`<div class="no-sensors"><div style="font-size:36px;margin-bottom:12px;">📱</div><div style="font-size:14px;font-weight:600;margin-bottom:6px;">Kein Sensor verbunden</div><div class="ns-url">http://192.168.178.104:5000/sensor</div></div>`;
     return;
   }
   grid.innerHTML=list.map(s=>{
-    const col=dbCol(s.db);
+    const col=dbColSensor(s.db);
     const pct=Math.min(100,(s.db/100)*100);
     const thrPct=Math.min(100,(s.threshold/100)*100);
     return `<div class="sensor-card ${s.recording?'recording':'active'}">
@@ -187,105 +339,16 @@ function renderSensors(list){
       <div class="sc-room">${s.room}</div>
       <div class="sc-name">${s.name}</div>
       <div class="sc-db" style="color:${col};">${s.db.toFixed(1)}<span style="font-size:16px;color:var(--muted);"> dB</span></div>
-      <div class="sc-bar">
-        <div class="sc-fill" style="width:${pct}%;background:${col};"></div>
-        <div class="sc-mark" style="left:${thrPct}%;"></div>
-      </div>
-      <div class="sc-meta">
-        <span>Peak: <strong style="color:var(--warm);">${s.peak.toFixed(1)} dB</strong></span>
-        <span>Schwelle: ${s.threshold} dB</span>
-      </div>
-      <div class="sc-cam">${s.camera?'📷 Kamera aktiv':'📷 Keine Kamera'} · seit ${s.connected_at}</div>
+      <div class="sc-bar"><div class="sc-fill" style="width:${pct}%;background:${col};"></div><div class="sc-mark" style="left:${thrPct}%;"></div></div>
+      <div class="sc-meta"><span>Peak: <strong style="color:var(--warm);">${s.peak.toFixed(1)} dB</strong></span><span>Schwelle: ${s.threshold} dB</span></div>
+      <div class="sc-cam">${s.camera?'📷 Kamera':'📷 Keine Kamera'} · seit ${s.connected_at}</div>
     </div>`;
   }).join('');
 }
 
+// ── Init ───────────────────────────────────────────────────
 initSocket();
-
-// ── Aufnahmen live laden ───────────────────────────────────
-async function loadRecordings(){
-  try{
-    const r=await fetch('/api/sensors/recordings');
-    const recs=await r.json();
-    const list=document.getElementById('recList');
-    const empty=document.getElementById('recEmpty');
-    if(!recs.length){if(empty)empty.style.display='block';return;}
-    if(empty)empty.style.display='none';
-    const cur=list.querySelectorAll('.rec-item').length;
-    if(recs.length<=cur)return;
-    list.innerHTML=recs.slice(0,15).map(r=>{
-      const isVideo=r.filename.endsWith('.webm')||r.filename.endsWith('.mp4');
-      const url=`/api/sensors/recordings/play/${encodeURIComponent(r.filename)}`;
-      const label=r.filename.replace(/_/g,' ').replace(/\.(wav|webm|mp4)$/,'');
-      const meta=`${r.size_kb} KB · ${isVideo?'Video mit Ton':'Audio'}`;
-      if(isVideo){
-        return `<div class="rec-video">
-          <video controls src="${url}" preload="metadata"></video>
-          <div class="rec-video-footer">
-            <div class="rec-info">
-              <div class="rec-ts">🎥 ${label}</div>
-              <div class="rec-meta">${meta}</div>
-            </div>
-            <a href="${url}" download="${r.filename}" class="btn" style="padding:6px 10px;font-size:12px;">⬇</a>
-            <button class="btn br" style="padding:6px 8px;font-size:11px;" onclick="delRec('${r.filename}',this)">✕</button>
-          </div>
-        </div>`;
-      }else{
-        return `<div class="rec-audio">
-          <div style="font-size:22px;flex-shrink:0;">🎙</div>
-          <div class="rec-info">
-            <div class="rec-ts">${label}</div>
-            <div class="rec-meta">${meta}</div>
-          </div>
-          <audio controls src="${url}" style="height:34px;flex:1;min-width:0;"></audio>
-          <a href="${url}" download="${r.filename}" class="btn" style="padding:6px 10px;font-size:12px;">⬇</a>
-          <button class="btn br" style="padding:6px 8px;font-size:11px;" onclick="delRec('${r.filename}',this)">✕</button>
-        </div>`;
-      }
-    }).join('');
-  }catch(e){}
-}
-setInterval(loadRecordings,5000);
-loadRecordings();
-
-// ── Log live ───────────────────────────────────────────────
-setInterval(async()=>{
-  try{
-    const r=await fetch('/api/hunde/events');const ev=await r.json();
-    if(!ev.length)return;
-    const er=document.getElementById('emptyRow');if(er)er.remove();
-    const body=document.getElementById('logBody');
-    if(ev.length<=body.querySelectorAll('tr').length)return;
-    body.innerHTML=ev.map(e=>{
-      const c=e.db_level<40?'#4fc3f7':e.db_level<55?'#69db7c':e.db_level<70?'#ffb347':e.db_level<80?'#ff6b00':'#ff3b3b';
-      const rgb=c.slice(1);const rv=parseInt(rgb.slice(0,2),16),gv=parseInt(rgb.slice(2,4),16),bv=parseInt(rgb.slice(4,6),16);
-      return `<tr>
-        <td>${e.timestamp}</td>
-        <td style="color:var(--muted);">${e.sensor_name||'—'}</td>
-        <td style="color:var(--muted);">${e.sensor_room||'—'}</td>
-        <td><span class="db-b" style="background:rgba(${rv},${gv},${bv},.15);color:${c};">${e.db_level} dB</span></td>
-        <td style="color:var(--dim);">${parseFloat(e.duration_s).toFixed(1)}s</td>
-      </tr>`;
-    }).join('');
-    const sr=await fetch('/api/hunde/charts');const sd=await sr.json();
-    if(sd.stats){
-      document.getElementById('stTotal').textContent=sd.stats.total||0;
-      document.getElementById('stMax').textContent=sd.stats.max_db?parseFloat(sd.stats.max_db).toFixed(1):'—';
-      document.getElementById('stAvg').textContent=sd.stats.avg_db?parseFloat(sd.stats.avg_db).toFixed(1):'—';
-    }
-  }catch(e){}
-},5000);
-
-async function clearLog(){
-  if(!confirm('Alle Ereignisse löschen?'))return;
-  await fetch('/api/hunde/clear',{method:'POST'});
-  document.getElementById('logBody').innerHTML='<tr id="emptyRow"><td colspan="5" style="text-align:center;color:var(--dim);padding:24px;">Noch keine Ereignisse.</td></tr>';
-  ['stTotal','stMax','stAvg'].forEach(id=>document.getElementById(id).textContent='—');
-}
-async function delRec(fn,btn){
-  if(!confirm('Aufnahme löschen?'))return;btn.disabled=true;
-  await fetch('/api/sensors/recordings/delete',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({filename:fn})});
-  btn.closest('.rec-item').remove();
-}
+loadData();
+setInterval(loadData, 4000);
 </script>
 {% endblock %}

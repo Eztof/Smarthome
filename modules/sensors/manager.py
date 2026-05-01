@@ -252,7 +252,7 @@ def get_recordings(limit=50):
     if not os.path.exists(RECORDINGS_DIR):
         return files
     for f in sorted(os.listdir(RECORDINGS_DIR), reverse=True):
-        if f.endswith(".wav"):
+        if f.endswith((".wav", ".webm", ".mp4")):
             path = os.path.join(RECORDINGS_DIR, f)
             size = os.path.getsize(path)
             files.append({

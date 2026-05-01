@@ -1,0 +1,361 @@
+{% extends "base.html" %}
+{% block title %}Thermometer – PI·HOME{% endblock %}
+{% block page_title %}Thermometer{% endblock %}
+
+{% block content %}
+<style>
+  /* ── Layout ────────────────────────────────────────── */
+  .tp-grid      { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:16px; margin-bottom:28px; }
+  .tp-card      { background:var(--bg-card); border:1px solid var(--border); border-radius:var(--rc); padding:20px; position:relative; }
+  .tp-card.off  { opacity:.55; }
+  .tp-card-top  { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:14px; }
+  .tp-room      { font-size:13px; font-weight:700; color:var(--accent); text-transform:uppercase; letter-spacing:.04em; }
+  .tp-mac       { font-size:11px; color:var(--dim); font-family:'DM Mono',monospace; }
+  .tp-dot       { width:8px; height:8px; border-radius:50%; background:#69db7c; flex-shrink:0; margin-top:4px; }
+  .tp-dot.off   { background:var(--dim); }
+  .tp-vals      { display:flex; gap:24px; align-items:flex-end; margin-bottom:14px; }
+  .tp-big       { font-size:42px; font-weight:800; line-height:1; color:var(--text); }
+  .tp-big span  { font-size:20px; font-weight:600; color:var(--muted); }
+  .tp-sub       { font-size:22px; font-weight:700; color:var(--accent); }
+  .tp-sub span  { font-size:13px; color:var(--muted); font-weight:400; }
+  .tp-meta      { display:flex; gap:12px; font-size:12px; color:var(--dim); align-items:center; }
+  .tp-batt      { display:flex; align-items:center; gap:4px; }
+  .tp-batt-bar  { width:28px; height:10px; border:1.5px solid var(--dim); border-radius:3px; position:relative; overflow:hidden; }
+  .tp-batt-fill { height:100%; transition:width .3s; }
+  .tp-btn-row   { display:flex; gap:8px; margin-top:14px; padding-top:14px; border-top:1px solid var(--border); }
+  .tp-btn       { flex:1; padding:7px 0; border-radius:8px; border:1px solid var(--border); background:var(--bg-panel); color:var(--muted); font-size:12px; font-weight:600; cursor:pointer; transition:all .15s; }
+  .tp-btn:hover { background:var(--bg-card); color:var(--text); }
+  .tp-btn.prim  { background:var(--abg); color:var(--accent); border-color:rgba(79,195,247,.25); }
+
+  /* ── Chart-Bereich ─────────────────────────────────── */
+  .tp-chart-wrap { background:var(--bg-card); border:1px solid var(--border); border-radius:var(--rc); padding:20px; margin-bottom:20px; }
+  .tp-chart-hdr  { display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:10px; }
+  .tp-chart-title{ font-size:14px; font-weight:700; color:var(--text); }
+  .tp-chart-sel  { display:flex; gap:8px; flex-wrap:wrap; }
+  .tp-sel-btn    { padding:5px 12px; border-radius:6px; border:1px solid var(--border); background:var(--bg-panel); color:var(--muted); font-size:12px; font-weight:600; cursor:pointer; transition:all .15s; }
+  .tp-sel-btn.active { background:var(--abg); color:var(--accent); border-color:rgba(79,195,247,.25); }
+  .tp-hours-sel  { padding:5px 10px; border-radius:6px; border:1px solid var(--border); background:var(--bg-panel); color:var(--muted); font-size:12px; cursor:pointer; }
+  canvas.tp-canvas { width:100% !important; height:220px !important; }
+
+  /* ── Umbenennen-Modal ──────────────────────────────── */
+  .tp-modal-bg  { display:none; position:fixed; inset:0; background:rgba(0,0,0,.6); z-index:200; align-items:center; justify-content:center; }
+  .tp-modal-bg.open { display:flex; }
+  .tp-modal     { background:var(--bg-panel); border:1px solid var(--border); border-radius:var(--rc); padding:24px; width:340px; max-width:90vw; }
+  .tp-modal h3  { font-size:16px; font-weight:700; margin-bottom:16px; }
+  .tp-modal label{ display:block; font-size:12px; color:var(--muted); margin-bottom:4px; margin-top:12px; }
+  .tp-modal input{ width:100%; padding:8px 10px; border-radius:8px; border:1px solid var(--border); background:var(--bg-card); color:var(--text); font-size:14px; }
+  .tp-modal-btns{ display:flex; gap:8px; margin-top:18px; }
+
+  /* ── Leerzustand ───────────────────────────────────── */
+  .tp-empty     { text-align:center; padding:60px 20px; color:var(--dim); }
+  .tp-empty-ic  { font-size:52px; margin-bottom:12px; }
+  .tp-empty-t   { font-size:16px; font-weight:600; color:var(--muted); margin-bottom:8px; }
+  .tp-empty-s   { font-size:13px; line-height:1.6; }
+
+  /* ── Statusleiste ──────────────────────────────────── */
+  .tp-status    { display:flex; align-items:center; gap:8px; font-size:12px; color:var(--dim); margin-bottom:20px; }
+  .tp-status-dot{ width:6px; height:6px; border-radius:50%; background:#69db7c; animation:pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+</style>
+
+<!-- Statuszeile -->
+<div class="tp-status">
+  <div class="tp-status-dot" id="scanDot"></div>
+  <span id="scanStatus">BLE-Scanner aktiv – suche nach Geräten…</span>
+  <span style="margin-left:auto;">Auto-Refresh: 30s</span>
+</div>
+
+<!-- Gerätekarten -->
+<div class="tp-grid" id="tpGrid">
+  {% if devices %}
+    {% for d in devices %}
+    <div class="tp-card" id="card-{{ loop.index }}" data-mac="{{ d.mac }}">
+      <div class="tp-card-top">
+        <div>
+          <div class="tp-room">{{ d.room or 'Raum nicht gesetzt' }}</div>
+          <div class="tp-mac">{{ d.mac }}</div>
+        </div>
+        <div class="tp-dot off" id="dot-{{ d.mac | replace(':','-') }}"></div>
+      </div>
+      <div class="tp-vals">
+        <div>
+          <div class="tp-big" id="temp-{{ d.mac | replace(':','-') }}">
+            {{ '%.1f'|format(d.temperature) if d.temperature is not none else '–' }}<span>°C</span>
+          </div>
+        </div>
+        <div>
+          <div class="tp-sub" id="hum-{{ d.mac | replace(':','-') }}">
+            {{ d.humidity if d.humidity is not none else '–' }}<span>%</span>
+          </div>
+        </div>
+      </div>
+      <div class="tp-meta">
+        <div class="tp-batt">
+          🔋
+          <div class="tp-batt-bar">
+            <div class="tp-batt-fill" id="batt-{{ d.mac | replace(':','-') }}"
+                 style="width:{{ d.battery or 0 }}%;
+                        background:{% if (d.battery or 0) > 50 %}#69db7c{% elif (d.battery or 0) > 20 %}#ffb347{% else %}#ff6b6b{% endif %}"></div>
+          </div>
+          <span id="battval-{{ d.mac | replace(':','-') }}">{{ d.battery or '?' }}%</span>
+        </div>
+        <div id="lastseen-{{ d.mac | replace(':','-') }}">{{ d.last_seen or 'noch nicht gesehen' }}</div>
+      </div>
+      <div class="tp-btn-row">
+        <button class="tp-btn" onclick="showChart('{{ d.mac }}', '{{ d.room or d.mac }}')">📈 Verlauf</button>
+        <button class="tp-btn prim" onclick="openRename('{{ d.mac }}', '{{ d.name or '' }}', '{{ d.room or '' }}')">✏️ Umbenennen</button>
+      </div>
+    </div>
+    {% endfor %}
+  {% else %}
+    <div class="tp-empty" style="grid-column:1/-1">
+      <div class="tp-empty-ic">🌡</div>
+      <div class="tp-empty-t">Keine Geräte gefunden</div>
+      <div class="tp-empty-s">Der BLE-Scanner läuft.<br>Stelle sicher, dass dein TP357 eingeschaltet und in Reichweite ist.<br>Neue Geräte erscheinen hier automatisch.</div>
+    </div>
+  {% endif %}
+</div>
+
+<!-- Chart -->
+<div class="tp-chart-wrap" id="chartWrap" style="display:none;">
+  <div class="tp-chart-hdr">
+    <div class="tp-chart-title" id="chartTitle">Verlauf</div>
+    <div class="tp-chart-sel">
+      <div style="display:flex;gap:6px;">
+        <button class="tp-sel-btn active" onclick="setMetric('both',this)">Temp + Feuchte</button>
+        <button class="tp-sel-btn"        onclick="setMetric('temp',this)">Temperatur</button>
+        <button class="tp-sel-btn"        onclick="setMetric('hum',this)">Feuchte</button>
+      </div>
+      <select class="tp-hours-sel" id="hoursSelect" onchange="loadChart()">
+        <option value="6">6 Stunden</option>
+        <option value="24" selected>24 Stunden</option>
+        <option value="72">3 Tage</option>
+        <option value="168">7 Tage</option>
+      </select>
+    </div>
+  </div>
+  <canvas class="tp-canvas" id="tpChart"></canvas>
+</div>
+
+<!-- Modal: Umbenennen -->
+<div class="tp-modal-bg" id="renameModal">
+  <div class="tp-modal">
+    <h3>Gerät umbenennen</h3>
+    <label>Raum</label>
+    <input type="text" id="inputRoom" placeholder="z.B. Wohnzimmer" />
+    <label>Anzeigename (optional)</label>
+    <input type="text" id="inputName" placeholder="z.B. Sensor Fenster" />
+    <input type="hidden" id="renameMac" />
+    <div class="tp-modal-btns">
+      <button class="tp-btn prim" style="flex:2" onclick="saveRename()">✓ Speichern</button>
+      <button class="tp-btn" onclick="closeModal()">Abbrechen</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script>
+// ── State ──────────────────────────────────────────────
+let chart      = null;
+let chartMac   = null;
+let chartLabel = '';
+let metric     = 'both';   // 'temp' | 'hum' | 'both'
+
+// ── Farben (aus CSS-Variablen) ─────────────────────────
+const cs = getComputedStyle(document.documentElement);
+const CLR_TEMP = 'rgba(255,107,107,';
+const CLR_HUM  = 'rgba(79,195,247,';
+
+// ── Gerätekarten live aktualisieren ───────────────────
+async function refreshDevices() {
+  try {
+    const r = await fetch('/api/thermopro/devices');
+    const devs = await r.json();
+    const grid = document.getElementById('tpGrid');
+
+    devs.forEach(d => {
+      const safe  = d.mac.replaceAll(':','-');
+      const dot   = document.getElementById('dot-' + safe);
+      const temp  = document.getElementById('temp-' + safe);
+      const hum   = document.getElementById('hum-' + safe);
+      const batt  = document.getElementById('batt-' + safe);
+      const battV = document.getElementById('battval-' + safe);
+      const ls    = document.getElementById('lastseen-' + safe);
+
+      if (!dot) {
+        // Neues Gerät → Seite neu laden damit Karte erscheint
+        window.location.reload();
+        return;
+      }
+
+      if (d.online) {
+        dot.classList.remove('off');
+        if (temp && d.temperature != null) temp.innerHTML = d.temperature.toFixed(1) + '<span>°C</span>';
+        if (hum  && d.humidity    != null) hum.innerHTML  = d.humidity + '<span>%</span>';
+        if (batt && d.battery     != null) {
+          const pct = d.battery;
+          batt.style.width      = pct + '%';
+          batt.style.background = pct > 50 ? '#69db7c' : pct > 20 ? '#ffb347' : '#ff6b6b';
+          if (battV) battV.textContent = pct + '%';
+        }
+        if (ls && d.last_seen) ls.textContent = d.last_seen;
+      } else {
+        dot.classList.add('off');
+      }
+    });
+
+    document.getElementById('scanStatus').textContent =
+      `BLE-Scanner aktiv – ${devs.filter(d=>d.online).length} Gerät(e) online`;
+
+    // Chart nachladen wenn offen
+    if (chartMac) loadChart();
+  } catch(e) {
+    document.getElementById('scanDot').style.background = '#ff6b6b';
+  }
+}
+
+// ── Chart ──────────────────────────────────────────────
+function showChart(mac, label) {
+  chartMac   = mac;
+  chartLabel = label;
+  document.getElementById('chartWrap').style.display = '';
+  document.getElementById('chartTitle').textContent  = '📈 ' + label;
+  document.getElementById('chartWrap').scrollIntoView({behavior:'smooth'});
+  loadChart();
+}
+
+async function loadChart() {
+  if (!chartMac) return;
+  const hours = document.getElementById('hoursSelect').value;
+  const r = await fetch(`/api/thermopro/history?mac=${encodeURIComponent(chartMac)}&hours=${hours}`);
+  const data = await r.json();
+
+  const labels  = data.map(d => {
+    const dt = new Date(d.timestamp);
+    return dt.toLocaleTimeString('de-DE', {hour:'2-digit', minute:'2-digit'});
+  });
+  const temps = data.map(d => d.temperature);
+  const hums  = data.map(d => d.humidity);
+
+  const datasets = [];
+  if (metric === 'temp' || metric === 'both') {
+    datasets.push({
+      label: 'Temperatur °C',
+      data:  temps,
+      borderColor:     CLR_TEMP + '1)',
+      backgroundColor: CLR_TEMP + '0.08)',
+      fill: true,
+      tension: 0.4,
+      pointRadius: data.length > 100 ? 0 : 2,
+      yAxisID: 'yTemp',
+    });
+  }
+  if (metric === 'hum' || metric === 'both') {
+    datasets.push({
+      label: 'Feuchte %',
+      data:  hums,
+      borderColor:     CLR_HUM + '1)',
+      backgroundColor: CLR_HUM + '0.08)',
+      fill: true,
+      tension: 0.4,
+      pointRadius: data.length > 100 ? 0 : 2,
+      yAxisID: 'yHum',
+    });
+  }
+
+  const ctx = document.getElementById('tpChart').getContext('2d');
+  if (chart) chart.destroy();
+
+  chart = new Chart(ctx, {
+    type: 'line',
+    data: { labels, datasets },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode:'index', intersect:false },
+      plugins: {
+        legend: { labels: { color: '#8892a4', font:{size:12} } },
+        tooltip: {
+          backgroundColor: '#161c28',
+          borderColor:      '#1e2535',
+          borderWidth:      1,
+          titleColor:       '#e8edf5',
+          bodyColor:        '#8892a4',
+          callbacks: {
+            label: ctx => {
+              const u = ctx.dataset.yAxisID === 'yTemp' ? ' °C' : ' %';
+              return `  ${ctx.dataset.label}: ${ctx.parsed.y?.toFixed(1)}${u}`;
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          grid:  { color:'rgba(255,255,255,0.04)' },
+          ticks: { color:'#5a6480', maxTicksLimit:10, font:{size:11} }
+        },
+        yTemp: {
+          display: metric !== 'hum',
+          position:'left',
+          grid:  { color:'rgba(255,255,255,0.04)' },
+          ticks: { color:'#ff6b6b', font:{size:11}, callback:v=>v.toFixed(1)+'°' }
+        },
+        yHum: {
+          display: metric !== 'temp',
+          position: metric === 'both' ? 'right' : 'left',
+          grid: { drawOnChartArea: metric !== 'both' },
+          ticks: { color:'#4fc3f7', font:{size:11}, callback:v=>v+'%' }
+        }
+      }
+    }
+  });
+}
+
+function setMetric(m, btn) {
+  metric = m;
+  document.querySelectorAll('.tp-sel-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  loadChart();
+}
+
+// ── Umbenennen ─────────────────────────────────────────
+function openRename(mac, name, room) {
+  document.getElementById('renameMac').value  = mac;
+  document.getElementById('inputRoom').value  = room;
+  document.getElementById('inputName').value  = name;
+  document.getElementById('renameModal').classList.add('open');
+  document.getElementById('inputRoom').focus();
+}
+
+function closeModal() {
+  document.getElementById('renameModal').classList.remove('open');
+}
+
+async function saveRename() {
+  const mac  = document.getElementById('renameMac').value;
+  const room = document.getElementById('inputRoom').value;
+  const name = document.getElementById('inputName').value;
+  await fetch('/api/thermopro/rename', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({mac, room, name})
+  });
+  closeModal();
+  window.location.reload();
+}
+
+// Modal schließen bei Klick außen
+document.getElementById('renameModal').addEventListener('click', e => {
+  if (e.target === e.currentTarget) closeModal();
+});
+
+// Tastatur: Enter im Modal speichert
+document.querySelectorAll('.tp-modal input').forEach(el => {
+  el.addEventListener('keydown', e => { if (e.key==='Enter') saveRename(); });
+});
+
+// ── Auto-Refresh ───────────────────────────────────────
+refreshDevices();
+setInterval(refreshDevices, 30_000);
+</script>
+{% endblock %}
